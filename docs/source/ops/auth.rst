@@ -261,14 +261,13 @@ Click Apply.
 Running Your App
 ----------------
 
-Assuming you have access to a computer with a public IP (or domain name), and
-you followed all of the above steps, you can start the ``create-daml-app``
-template with Auth0 integration by following these steps.
-
 For simplicity, we assume that all of the Daml components will run on a single
-machine (they can find each other on ``localhost``)and that that machine has
+machine (they can find each other on ``localhost``) and that that machine has
 either a public IP or a public DNS that Auth0 can reach. Furthermore, we assume
 that IP/DNS is what you've configured as the callback URL above.
+
+Finally, we assume that you can SSH into that machine and run ``daml`` and
+``docker`` commands on it.
 
 The rest of this section happens on that remote server.
 
@@ -277,14 +276,20 @@ First, if you don't have an app already, you can just create a new one:
 .. code-block:: bash
 
     daml new --template=create-daml-app my-project
-    cd my-project
 
-Then, we need to start the Daml driver. For this example we'll use the sandbox,
-but with ``--implicit-party-allocation false`` it should behave like any ledger
-(minus persistence).
+If you have an app already, you should be able to follow along. However, if
+your app was based on the ``create-daml-app`` template using a Daml SDK version
+prior to 1.17.0, you may need to adapt your ``ui/src/config.ts`` and
+``ui/src/components/LoginScreen.tsx`` files. See `this commit <>`_ for
+guidance.
+
+Next, we need to start the Daml driver. For this example we'll use the sandbox,
+but with ``--implicit-party-allocation false`` it should behave like a
+production ledger (minus persistence).
 
 .. code-blocks:: bash
 
+    cd my-project
     daml build
     daml codegen js .daml/dist/my-project-0.1.0.dar -o ui/daml.js
     daml sandbox --ledgerid %%LEDGER_ID%% \
@@ -297,45 +302,53 @@ As before, you need to replace ``%%LEDGER_ID%%`` with a value of your choosing
 your Auth0 domain, which you can find as the Domain field at the top of the
 Settings tab for any app in the tenant.
 
-Next, you need to start a JSON API instance. For simplicity, here we assume it
-is running on the same machine (if it isn't, you'll need to pass in a
-``--address`` option to the sandbox):
+Next, you need to start a JSON API instance.
 
 .. code-block:: bash
 
+    cd my-project
     daml json-api --ledger-port 6865 \
                   --ledger-host localhost \
-                  --http-port 4000 \
-                  --access-token-file ./token
+                  --http-port 4000
 
-Now, we need to expose the JSON API and our static files. We'll use nginx for
-that, but you can use any HTTP server you (and your security team) are
-comfortable with.
+If you are using a Daml SDK version prior to 1.17.0, you'll need to find a way
+to supply the JSON API with a valid, refreshing token file. We recommend
+upgrading to 1.17.0 or later.
 
-Because Auth0 only works on secure connections, the first step is to create an
-SSL certificate. If you have access to a real one, you can use that; if not,
-here are the commands to create a self-signed certificate:
+Next, let's build our frontend code:
 
 .. code-block:: bash
 
-    mkdir ssl
-    openssl req -x509 \
-                -newkey rsa:4096 \
-                -keyout ssl/nginx-selfsigned.key \
-                -out ssl/nginx-selfsigned.crt \
-                -days 365 \
-                -nodes \
-                -subj "/C=US/ST=Oregon/L=Portland/O=Company Name/OU=Org/CN=%%ORIGIN%%"
-    openssl dhparam -out ssl/dhparam.pem 2048
+    cd my-project/ui
+    npm install
+    REACT_APP_AUTH=auth0 \
+    REACT_APP_AUTH0_DOMAIN=%%AUTH0_DOMAIN%% \
+    REACT_APP_AUTH0_CLIENT_ID=%%LOGIN_ID%% \
+    npm run-script build
 
-As above, you need to replace ``%%ORIGIN%%`` with the address (name or ip, and
-optionally port if not 443) on which you will expose your application.
+As before, ``%%AUTH0_DOMAIN%%`` and ``%%LOGIN_ID%%`` need to be replaced.
 
-Next, we need a configuration file for nginx. Here is one that works, though
-for a real deployment you will want your security team to take a look at it:
+Now, we need to expose the JSON API and our static files. We'll use ``docker``
+for that, but you can use any HTTP server you (and your security team) are
+comfortable with, as long as it can serve static files and proxy some paths.
+
+First, create a file ``nginx/nginx.conf.sh`` with the following content next to
+your app folder (``my-project`` in this example):
 
 .. code-block::
 
+    #!/usr/bin/env bash
+
+    set -euo pipefail
+    openssl req -x509 \
+                -newkey rsa:4096 \
+                -keyout /etc/ssl/private/nginx-selfsigned.key \
+                -out /etc/ssl/certs/nginx-selfsigned.crt \
+                -days 365 \
+                -nodes \
+                -subj "/C=US/ST=Oregon/L=Portland/O=Company Name/OU=Org/CN=${FRONTEND_IP}"
+    openssl dhparam -out /etc/ssl/certs/dhparam.pem 2048
+    cat <<NGINX_CONFIG > /etc/nginx/nginx.conf
     worker_processes auto;
     pid /run/nginx.pid;
     events {
@@ -382,9 +395,11 @@ for a real deployment you will want your security team to take a look at it:
           proxy_http_version 1.1;
           proxy_set_header Upgrade \$http_upgrade;
           proxy_set_header Connection "Upgrade";
+          proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
         }
         location /v1 {
           proxy_pass http://${JSON_IP};
+          proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
         }
         root /app/ui;
         index index.html;
@@ -393,3 +408,27 @@ for a real deployment you will want your security team to take a look at it:
         }
       }
     }
+    NGINX_CONFIG
+
+Next, create a file ``nginx/Dockerfile`` with this content:
+
+.. code-block::
+
+    FROM nginx:1.21.0
+
+    COPY build /app/ui
+    COPY nginx.conf.sh /app/nginx.conf.sh
+    RUN chmod +x /app/nginx.conf.sh
+    CMD /app/nginx.conf.sh && exec nginx -g 'daemon off;'
+
+Finally, we can build and run the Docker container with the following, starting
+in the folder that contains both ``nginx`` and ``my-project``:
+
+.. code-block:: bash
+
+    cp -r my-project/ui/build nginx/build
+    cd nginx
+    docker build -t frontend .
+    docker run -e JSON_IP=localhost:4000 -e FRONTEND_IP=%%ORIGIN%% --network=host frontend
+
+
