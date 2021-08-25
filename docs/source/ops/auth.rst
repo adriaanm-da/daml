@@ -206,7 +206,7 @@ Replace the default code with the following JavaScript:
             }});
           const token = tokenResponse.data.access_token;
           const partyResponse = await axios.request({
-            "url": "http://%%JSON_ADDRESS%%/v1/parties/allocate",
+            "url": "http://%%ORIGIN%%/v1/parties/allocate",
             "method": "post",
             "headers": {
               "Content-Type": "application/json",
@@ -238,7 +238,7 @@ where you need to replace ``%%LOGIN_ID%%`` with the Client ID of the LOGIN_APP
 application; ``%%ADMIN_TOKEN_URL%%``, ``%%ADMIN_TOKEN_ID%%`` and
 ``%%ADMIN_TOKEN_SECRET%%`` with, respectively, the URL, ``client_id`` and
 ``client_secret`` values that you can find on the curl example from the Quick
-Start of the ADMIN_TOKEN_APP application; ``%%JSON_ADDRESS%%`` by the domain
+Start of the ADMIN_TOKEN_APP application; ``%%ORIGIN%%`` by the domain
 (or IP address) and port where Auth0 can reach your JSON API instance;
 ``%%LEDGER_ID%%`` by the ``ledgerId`` you're passing into your Daml driver;
 ``%%APP_NAME%%`` by a name of your choosing; we'll go for ``PARTY_ALLOCATION``.
@@ -266,8 +266,11 @@ you followed all of the above steps, you can start the ``create-daml-app``
 template with Auth0 integration by following these steps.
 
 For simplicity, we assume that all of the Daml components will run on a single
-machine (they can find each other on ``localhost``) and that this is an
-internal, testing setup.
+machine (they can find each other on ``localhost``)and that that machine has
+either a public IP or a public DNS that Auth0 can reach. Furthermore, we assume
+that IP/DNS is what you've configured as the callback URL above.
+
+The rest of this section happens on that remote server.
 
 First, if you don't have an app already, you can just create a new one:
 
@@ -278,7 +281,7 @@ First, if you don't have an app already, you can just create a new one:
 
 Then, we need to start the Daml driver. For this example we'll use the sandbox,
 but with ``--implicit-party-allocation false`` it should behave like any ledger
-(minus persistence)..
+(minus persistence).
 
 .. code-blocks:: bash
 
@@ -289,7 +292,7 @@ but with ``--implicit-party-allocation false`` it should behave like any ledger
                  --implicit-party-allocation false \
                  .daml/dist/my-project-0.1.0.dar
 
-As before, you need to replace ``%%LEDGER_ID%%`` by a value of your choosing
+As before, you need to replace ``%%LEDGER_ID%%`` with a value of your choosing
 (the same one you used when configuring Auth0), and ``%%AUTH0_DOMAIN%%`` with
 your Auth0 domain, which you can find as the Domain field at the top of the
 Settings tab for any app in the tenant.
@@ -300,15 +303,93 @@ is running on the same machine (if it isn't, you'll need to pass in a
 
 .. code-block:: bash
 
-    daml json-api --ledger-port 6865 --ledger-host localhost --http-port 4000 --access-token-file ./token
+    daml json-api --ledger-port 6865 \
+                  --ledger-host localhost \
+                  --http-port 4000 \
+                  --access-token-file ./token
 
-In a real deployment, the next step would be to compile the application and
-setup a web server that serves the static assets and proxies the JSON API. For
-this example, however, we are just going to run ``npm start`` to start a
-development server.
+Now, we need to expose the JSON API and our static files. We'll use nginx for
+that, but you can use any HTTP server you (and your security team) are
+comfortable with.
+
+Because Auth0 only works on secure connections, the first step is to create an
+SSL certificate. If you have access to a real one, you can use that; if not,
+here are the commands to create a self-signed certificate:
 
 .. code-block:: bash
 
-    cd ui
-    npm install
+    mkdir ssl
+    openssl req -x509 \
+                -newkey rsa:4096 \
+                -keyout ssl/nginx-selfsigned.key \
+                -out ssl/nginx-selfsigned.crt \
+                -days 365 \
+                -nodes \
+                -subj "/C=US/ST=Oregon/L=Portland/O=Company Name/OU=Org/CN=%%ORIGIN%%"
+    openssl dhparam -out ssl/dhparam.pem 2048
 
+As above, you need to replace ``%%ORIGIN%%`` with the address (name or ip, and
+optionally port if not 443) on which you will expose your application.
+
+Next, we need a configuration file for nginx. Here is one that works, though
+for a real deployment you will want your security team to take a look at it:
+
+.. code-block::
+
+    worker_processes auto;
+    pid /run/nginx.pid;
+    events {
+      worker_connections 768;
+    }
+    http {
+      sendfile on;
+      tcp_nopush on;
+      tcp_nodelay on;
+      keepalive_timeout 65;
+      types_hash_max_size 2048;
+      include /etc/nginx/mime.types;
+      default_type application/octet-stream;
+      access_log /var/log/nginx/access.log;
+      error_log /var/log/nginx/error.log;
+      gzip on;
+
+      ssl_certificate /etc/ssl/certs/nginx-selfsigned.crt;
+      ssl_certificate_key /etc/ssl/private/nginx-selfsigned.key;
+      ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
+      ssl_prefer_server_ciphers on;
+      ssl_ciphers "EECDH+AESGCM:EDH+AESGCM:AES256+EECDH:AES256+EDH";
+      ssl_ecdh_curve secp384r1;
+      ssl_session_cache shared:SSL:10m;
+      ssl_session_tickets off;
+      ssl_stapling on;
+      ssl_stapling_verify on;
+      resolver 8.8.8.8 8.8.4.4 valid=300s;
+      resolver_timeout 5s;
+      add_header X-Frame-Options DENY;
+      add_header X-Content-Type-Options nosniff;
+
+      ssl_dhparam /etc/ssl/certs/dhparam.pem;
+
+      server {
+        listen 80;
+        return 302 https://${FRONTEND_IP}\$request_uri;
+      }
+
+      server {
+        listen 443 ssl http2;
+        location /v1/stream {
+          proxy_pass http://${JSON_IP};
+          proxy_http_version 1.1;
+          proxy_set_header Upgrade \$http_upgrade;
+          proxy_set_header Connection "Upgrade";
+        }
+        location /v1 {
+          proxy_pass http://${JSON_IP};
+        }
+        root /app/ui;
+        index index.html;
+        location / {
+          try_files \$uri \$uri/ =404;
+        }
+      }
+    }
