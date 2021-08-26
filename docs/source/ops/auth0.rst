@@ -160,15 +160,12 @@ You can find the value for ``%%AUTH0_DOMAIN%%`` in the Domain field of the
 settings page for the ADMIN_TOKEN_APP application (or any other application on
 the same tenant).
 
-Party Allocation
-----------------
+Dynamic Party Allocation
+------------------------
 
 At this point, we can generate an admin token, and the Daml driver can check
 its signature and thus accept it. The next step is to actually allocate
 parties when people connect for the first time.
-
-Because Auth0 automation is done in JavaScript, it is a lot easier to go
-through the JSON API than the raw gRPC Ledger API for this.
 
 First, we need to create a new application, of type "Single Page Web
 Applications". We'll be calling it LOGIN_APP. Open up the Settings tab and
@@ -256,7 +253,23 @@ Deploy button.
 Now you need to go to Actions > Flows, choose the Login flow, and drag the
 LOGIN_ACTION action in-between the two black circles Start and Complete.
 
-Click Apply.
+Click Apply. You now have a working Auth0 system that automatically allocates
+new parties upon first login, and remembers the mapping for future logins (that
+happens by setting the party in the "app metadata", which Auth0 persists).
+
+Token Refresh for Trigger Service
+---------------------------------
+
+If you want your users to be able to run triggers, you can run an instance of
+the Trigger Service and expose it through the same HTTP URL. This means it can
+use the same set of tokens, which the users will send along with their request
+to start the trigger.
+
+However, user tokens have an expiration time. In order for the trigger service
+to continue running their trigger, it will need some way to refresh those
+tokens.
+
+
 
 Running Your App
 ----------------
