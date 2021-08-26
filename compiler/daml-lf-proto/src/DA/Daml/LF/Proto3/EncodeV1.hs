@@ -895,7 +895,7 @@ encodeTemplate Template{..} = do
     defTemplateChoices <- encodeNameMap encodeTemplateChoice tplChoices
     defTemplateLocation <- traverse encodeSourceLoc tplLocation
     defTemplateKey <- traverse encodeTemplateKey tplKey
-    defTemplateImplements <- encodeList encodeTemplateImplements [] -- TODO (drsk) interfaces
+    defTemplateImplements <- encodeList encodeTemplateImplements tplImplements
     pure P.DefTemplate{..}
 
 encodeTemplateKey :: TemplateKey -> Encode P.DefTemplate_DefKey
@@ -943,8 +943,8 @@ encodeScenarioModule version mod =
   where
     metadata = getPackageMetadata version (PackageName "scenario") Nothing
 
--- encodeDefInterface :: DefInterface -> Encode P.DefInterface
--- encodeDefInterface = undefined -- TODO (drsk) interfaces
+encodeDefInterface :: DefInterface -> Encode P.DefInterface
+encodeDefInterface = undefined -- TODO interfaces
 
 encodeModule :: Module -> Encode P.Module
 encodeModule Module{..} = do
@@ -955,7 +955,7 @@ encodeModule Module{..} = do
     moduleValues <- encodeNameMap encodeDefValue moduleValues
     moduleTemplates <- encodeNameMap encodeTemplate moduleTemplates
     moduleExceptions <- encodeNameMap encodeDefException moduleExceptions
-    let moduleInterfaces = V.empty -- TODO (drsk) interfaces
+    moduleInterfaces <- encodeNameMap encodeDefInterface  moduleInterfaces
     pure P.Module{..}
 
 encodePackageMetadata :: PackageMetadata -> Encode P.PackageMetadata
