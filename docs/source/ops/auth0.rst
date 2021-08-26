@@ -269,7 +269,16 @@ However, user tokens have an expiration time. In order for the trigger service
 to continue running their trigger, it will need some way to refresh those
 tokens.
 
+The first step on that front is to actually allow our tokens to be refreshed.
+Go to the settings tab of the API_NAME API (menu on the left > Applications >
+API > API_NAME) and scroll down. Towards the bottom of the page there should be
+a "Allow Offline Access" toggle, which is off by default. Turn it on, and save.
 
+Next, we need to create a second "Machine-to-Machine Application", which we'll
+call OAUTH_APP, to register the OAuth2 Middleware which will refresh tokens for
+the Trigger service. When creating such an application, you'll be asked for its
+authorized APIs; select at least API_NAME. Once the application is created, go
+to its settings tab and add ``%%ORIGIN%%/auth/cb`` as a callback URL.
 
 Running Your App
 ----------------
@@ -288,7 +297,7 @@ First, if you don't have an app already, you can just create a new one:
 
 .. code-block:: bash
 
-    daml new --template=create-daml-app my-project
+    daml new --template=gsg-trigger my-project
 
 If you have an app already, you should be able to follow along. However, if
 your app was based on the ``create-daml-app`` template using a Daml SDK version
@@ -327,6 +336,43 @@ Next, you need to start a JSON API instance.
 If you are using a Daml SDK version prior to 1.17.0, you'll need to find a way
 to supply the JSON API with a valid, refreshing token file. We recommend
 upgrading to 1.17.0 or later.
+
+Then, we want to start the Trigger Service and OAuth2 middleware, which we will
+put respectively under ``/trigger`` and ``/auth``. First, the middleware:
+
+.. code-block:: bash
+
+    DAML_CLIENT_ID=%%OAUTH_APP_ID%% \
+    DAML_CLIENT_SECRET=%%OAUTH_APP_SECRET \
+    daml oauth2-middleware \
+      --address localhost \
+      --http-port 5000 \
+      --oauth-auth "https://%%AUTH0_DOMAIN%%/authorize" \
+      --oauth-token "https://%%AUTH0_DOMAIN%%/oauth/token" \
+      --auth-jwt-rs256-jwks "https://%%AUTH0_DOMAIN%%/.well-known/jwks.json" \
+      --callback %%ORIGIN%%/auth/cb
+
+where, as before, you need to replace:
+
+- ``%%OAUTH_APP_ID%%`` with the Client ID value you can find at the top of the
+  settings tab for the OAUTH_APP we just created.
+- ``%%OAUTH_APP_SECRET%%`` with the Client Secret value you can find at the top
+  of the settings tab for the OAUTH_APP we just created.
+- ``%%AUTH0_DOMAIN%%`` with your tenant domain.
+- ``%%ORIGIN%%`` with the full domain-name-or-ip & port, including scheme,
+  under which you expose your server.
+
+Now, the trigger service:
+
+.. code-block:: bash
+
+    daml trigger-service \
+      --address localhost \
+      --http-port 6000 \
+      --ledger-host localhost \
+      --ledger-port 6865 \
+      --auth %%ORIGIN%%/auth \
+      --auth-callback %%ORIGIN%%/trigger/cb
 
 Next, let's build our frontend code:
 
@@ -414,6 +460,14 @@ your app folder (``my-project`` in this example):
           proxy_pass http://${JSON_IP};
           proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
         }
+        location /auth {
+          proxy_pass http://${AUTH_IP};
+          proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        }
+        location /trigger {
+          proxy_pass http://${TRIGGER_IP};
+          proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        }
         root /app/ui;
         index index.html;
         location / {
@@ -442,6 +496,6 @@ in the folder that contains both ``nginx`` and ``my-project``:
     cp -r my-project/ui/build nginx/build
     cd nginx
     docker build -t frontend .
-    docker run -e JSON_IP=localhost:4000 -e FRONTEND_IP=%%ORIGIN%% --network=host frontend
+    docker run -e JSON_IP=localhost:4000 -e AUTH_IP=localhost:5000 -e TRIGGER_IP=localhost:6000 -e FRONTEND_IP=%%ORIGIN%% --network=host frontend
 
 
