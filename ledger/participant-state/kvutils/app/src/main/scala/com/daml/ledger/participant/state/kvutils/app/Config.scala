@@ -8,9 +8,9 @@ import java.nio.file.Path
 import java.time.Duration
 import java.util.UUID
 import java.util.concurrent.TimeUnit
-
 import com.daml.caching
-import com.daml.ledger.api.tls.{SecretsUrl, TlsConfiguration}
+import com.daml.ledger.api.tls.TlsVersion.TlsVersion
+import com.daml.ledger.api.tls.{SecretsUrl, TlsConfiguration, TlsVersion}
 import com.daml.ledger.resources.ResourceOwner
 import com.daml.lf.VersionRange
 import com.daml.lf.data.Ref
@@ -18,11 +18,7 @@ import com.daml.lf.language.LanguageVersion
 import com.daml.metrics.MetricsReporter
 import com.daml.platform.apiserver.SeedService.Seeding
 import com.daml.platform.configuration.Readers._
-import com.daml.platform.configuration.{
-  CommandConfiguration,
-  IndexConfiguration,
-  SubmissionConfiguration,
-}
+import com.daml.platform.configuration.{CommandConfiguration, IndexConfiguration, SubmissionConfiguration}
 import com.daml.ports.Port
 import io.netty.handler.ssl.ClientAuth
 import scopt.OptionParser
@@ -375,6 +371,15 @@ object Config {
           )
           .action((clientAuth, config) =>
             config.withTlsConfig(c => c.copy(clientAuth = clientAuth))
+          )
+
+        opt[TlsVersion]("tls-version")
+          .optional()
+          .text(
+            "TLS: Minimum TLS version to force. If specified must be one of 1.2 or 1.3. If not specified some default protocol will be used."
+          )
+          .action((tlsVersion, config) =>
+            config.withTlsConfig(c => c.copy(minimumProtocolVersion = TlsVersion.getAllGreaterOrEqual(minimumVersion = tlsVersion)))
           )
 
         opt[Int]("max-commands-in-flight")

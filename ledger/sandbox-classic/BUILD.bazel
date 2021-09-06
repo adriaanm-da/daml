@@ -18,6 +18,25 @@ alias(
     visibility = ["//visibility:public"],
 )
 
+da_java_library(
+    name = "digital-asset-netty-ssl",
+    srcs = glob(["src/main/java/**/*.java"]),
+    tags = [
+        "javadoc_root_packages=com.daml.grpc.adapter",
+        "maven_coordinates=com.daml:rs-grpc-bridge:__VERSION__",
+    ],
+    visibility = [
+        "//visibility:public",
+    ],
+    deps = [
+        "@maven//:com_google_code_findbugs_jsr305",
+        "@maven//:io_grpc_grpc_api",
+        "@maven//:io_grpc_grpc_stub",
+        "@maven//:org_reactivestreams_reactive_streams",
+        "@maven//:org_slf4j_slf4j_api",
+    ],
+)
+
 [
     da_scala_library(
         name = "sandbox-classic-{}".format(edition),

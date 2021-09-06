@@ -40,7 +40,7 @@ private[apiserver] object GrpcServer {
       services: Iterable[BindableService],
   ): ResourceOwner[Server] = {
     val host = address.map(InetAddress.getByName).getOrElse(InetAddress.getLoopbackAddress)
-    val builder = NettyServerBuilder.forAddress(new InetSocketAddress(host, desiredPort.value))
+    val builder: NettyServerBuilder = NettyServerBuilder.forAddress(new InetSocketAddress(host, desiredPort.value))
     builder.sslContext(sslContext.orNull)
     builder.permitKeepAliveTime(10, SECONDS)
     builder.permitKeepAliveWithoutCalls(true)

@@ -94,6 +94,36 @@ final class ConfigSpec
     ) shouldBe None
   }
 
+  it should "fail parsing a bogus TLS version" in {
+    configParser(
+      Seq(
+        dumpIndexMetadataCommand,
+        "some-jdbc-url",
+        "--tls-version",
+        "111",
+      )
+    ) shouldBe None
+  }
+
+  it should "succeed parsing a supported TLS version" in {
+    val actual = configParser(
+      Seq(
+        dumpIndexMetadataCommand,
+        "some-jdbc-url",
+        "--tls-version",
+        "1.3",
+      )
+    )
+
+    actual should not be None
+    actual.get.tlsConfig shouldBe Some(
+      TlsConfiguration(
+        enabled = true,
+        minimumProtocolVersion = Seq("TLSv1.3"),
+      )
+    )
+  }
+
   it should "succeed when server's private key is in plaintext and secret-url is not provided" in {
     val actual = configParser(
       Seq(
