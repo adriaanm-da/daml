@@ -105,58 +105,71 @@ class ConversionsSpec extends AnyWordSpec with Matchers with OptionValues {
       "convert rejection to proto models and back to expected grpc code" in {
         forAll(
           Table(
-            ("rejection", "expected code"),
+            ("rejection", "expected code", "expected definite answer"),
             (
               Rejection.ValidationFailure(Error.Package(Error.Package.Internal("ERROR", "ERROR"))),
               Code.INVALID_ARGUMENT,
+              true,
             ),
             (
               Rejection.InternallyInconsistentTransaction.InconsistentKeys,
               Code.INVALID_ARGUMENT,
+              true,
             ),
             (
               Rejection.InternallyInconsistentTransaction.DuplicateKeys,
               Code.INVALID_ARGUMENT,
+              true,
             ),
             (
               Rejection.ExternallyInconsistentTransaction.InconsistentContracts,
               Code.ABORTED,
+              false,
             ),
             (
               Rejection.ExternallyInconsistentTransaction.InconsistentKeys,
               Code.ABORTED,
+              false,
             ),
             (
               Rejection.ExternallyInconsistentTransaction.DuplicateKeys,
               Code.ABORTED,
+              false,
             ),
             (
               Rejection.MissingInputState(DamlStateKey.getDefaultInstance),
               Code.ABORTED,
+              false,
             ),
             (
               Rejection.InvalidParticipantState(Err.InternalError("error")),
               Code.INVALID_ARGUMENT,
+              false,
             ),
             (
               Rejection.RecordTimeOutOfRange(now, now),
               Code.ABORTED,
+              false,
             ),
             (
               Rejection.LedgerTimeOutOfRange(LedgerTimeModel.OutOfRange(now, now, now)),
               Code.ABORTED,
+              false,
             ),
             (
               Rejection.CausalMonotonicityViolated,
               Code.ABORTED,
+              false,
             ),
             (
               Rejection.SubmittingPartyNotKnownOnLedger(Ref.Party.assertFromString("party")),
               Code.INVALID_ARGUMENT,
+              false,
             ),
             (
               Rejection.PartiesNotKnownOnLedger(Seq.empty),
               Code.INVALID_ARGUMENT,
+              false,
             ),
             (
               Rejection.SubmitterCannotActViaParticipant(
@@ -164,9 +177,10 @@ class ConversionsSpec extends AnyWordSpec with Matchers with OptionValues {
                 Ref.ParticipantId.assertFromString("id"),
               ),
               Code.PERMISSION_DENIED,
+              false,
             ),
           )
-        ) { (rejection, expectedCode) =>
+        ) { (rejection, expectedCode, expectedDefiniteAnswer) =>
           {
             val encodedEntry = Conversions
               .encodeTransactionRejectionEntry(
@@ -174,10 +188,11 @@ class ConversionsSpec extends AnyWordSpec with Matchers with OptionValues {
                 rejection,
               )
               .build()
-            Conversions
+            val finalReason = Conversions
               .decodeTransactionRejectionEntry(encodedEntry)
               .value
-              .code shouldBe expectedCode.value()
+            finalReason.code shouldBe expectedCode.value()
+            finalReason.definiteAnswer shouldBe expectedDefiniteAnswer
           }
         }
       }
@@ -187,47 +202,53 @@ class ConversionsSpec extends AnyWordSpec with Matchers with OptionValues {
         "handle with expected status codes" in {
           forAll(
             Table(
-              ("rejection builder", "code"),
+              ("rejection builder", "code", "definite answer"),
               (
                 (builder: DamlTransactionRejectionEntry.Builder) =>
                   builder
                     .setInconsistent(Inconsistent.newBuilder()),
                 Code.ABORTED,
+                false,
               ),
               (
                 (builder: DamlTransactionRejectionEntry.Builder) =>
                   builder
                     .setDisputed(Disputed.newBuilder()),
                 Code.INVALID_ARGUMENT,
+                true,
               ),
               (
                 (builder: DamlTransactionRejectionEntry.Builder) =>
                   builder
                     .setResourcesExhausted(ResourcesExhausted.newBuilder()),
                 Code.ABORTED,
+                false,
               ),
               (
                 (builder: DamlTransactionRejectionEntry.Builder) =>
                   builder
                     .setPartyNotKnownOnLedger(PartyNotKnownOnLedger.newBuilder()),
                 Code.INVALID_ARGUMENT,
+                false,
               ),
               (
                 (builder: DamlTransactionRejectionEntry.Builder) =>
                   builder
                     .setDuplicateCommand(Duplicate.newBuilder()),
                 Code.ALREADY_EXISTS,
+                true,
               ),
             )
-          ) { (rejectionBuilder, code) =>
+          ) { (rejectionBuilder, code, definiteAnswer) =>
             {
-              Conversions
+              val finalReason = Conversions
                 .decodeTransactionRejectionEntry(
                   rejectionBuilder(DamlTransactionRejectionEntry.newBuilder())
                     .build()
                 )
                 .value
-                .code shouldBe code.value()
+              finalReason.code shouldBe code.value()
+              finalReason.definiteAnswer shouldBe definiteAnswer
             }
           }
         }
