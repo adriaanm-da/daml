@@ -148,6 +148,10 @@ external = external --deleted by the compiler
 primitive : forall (f : Symbol) b. b
 primitive = primitive -- deleted by the compiler
 
+-- | HIDE Call an interface method on an existential.
+primitiveInterface : forall (f : Symbol) b. b
+primitiveInterface = primitiveInterface -- deleted by the compiler
+
 -- | HIDE Handled actually in the guts of the compiler
 magic : forall (f : Symbol) b. b
 magic = magic -- deleted by the compiler
