@@ -648,7 +648,7 @@ private[archive] class DecodeV1(minor: LV.Minor) {
     ): DefInterface = {
       assertSince(LV.Features.interfaces, "DefInterface")
       DefInterface(
-        decodeFields(ImmArray(lfInterface.getMethodsList.asScala)).toList,
+        decodeFields(lfInterface.getMethodsList.asScala).toList,
         lfInterface.getChoicesList.asScala.toList
           .map(decodeInterfaceChoice(_))
           .map(choice => (choice.name, choice)),

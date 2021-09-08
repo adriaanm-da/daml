@@ -772,9 +772,19 @@ checkDefTypeSyn DefTypeSyn{synParams,synType} = do
   where
     base = checkType synType KStar
 
+
+checkIface :: MonadGamma m => DefInterface -> m ()
+checkIface DefInterface{intName, intChoices} = do
+  checkUnique (EDuplicateInterfaceChoiceName intName) $ NM.names intChoices
+  forM_ intChoices checkIfaceChoice
+
+checkIfaceChoice :: MonadGamma m => InterfaceChoice -> m ()
+checkIfaceChoice InterfaceChoice{ifcRetType} = do
+  checkType ifcRetType KStar
+
 -- | Check that a type constructor definition is well-formed.
-checkDefDataType :: MonadGamma m => DefDataType -> m ()
-checkDefDataType (DefDataType _loc _name _serializable params dataCons) = do
+checkDefDataType :: MonadGamma m => NM.NameMap DefInterface -> DefDataType -> m ()
+checkDefDataType nm (DefDataType _loc name _serializable params dataCons) = do
   checkUnique EDuplicateTypeParam $ map fst params
   mapM_ (checkKind . snd) params
   foldr (uncurry introTypeVar) base params
@@ -789,7 +799,10 @@ checkDefDataType (DefDataType _loc _name _serializable params dataCons) = do
         checkUnique EDuplicateConstructor names
       DataInterface -> do
         unless (null params) $ throwWithContext EInterfaceTypeWithParams
-        -- TODO interfaces: Check that a DefInterface exists to go with this.
+        -- Check that a DefInterface exists to go with this.
+        case NM.lookup name nm of
+          Nothing -> throwWithContext $ EMissingInterfaceDefinition name
+          Just _ifDef -> pure ()
 
 checkDefValue :: MonadGamma m => DefValue -> m ()
 checkDefValue (DefValue _loc (_, typ) _noParties (IsTest isTest) expr) = do
@@ -813,7 +826,7 @@ checkTemplateChoice tpl (TemplateChoice _loc _ _ controllers mbObservers selfBin
     checkExpr upd (TUpdate retType)
 
 checkTemplate :: MonadGamma m => Module -> Template -> m ()
-checkTemplate m t@(Template _loc tpl param precond signatories observers text choices mbKey _implements) = do -- TODO interfaces
+checkTemplate m t@(Template _loc tpl param precond signatories observers text choices mbKey implements) = do
   let tcon = Qualified PRSelf (moduleName m) tpl
   DefDataType _loc _naem _serializable tparams dataCons <- inWorld (lookupDataType tcon)
   unless (null tparams) $ throwWithContext (EExpectedTemplatableType tpl)
@@ -825,8 +838,32 @@ checkTemplate m t@(Template _loc tpl param precond signatories observers text ch
     withPart TPAgreement $ checkExpr text TText
     for_ choices $ \c -> withPart (TPChoice c) $ checkTemplateChoice tcon c
   whenJust mbKey $ checkTemplateKey param tcon
+  forM_ implements $ checkIfaceImplementation (moduleName m) (moduleInterfaces m)
   where
     withPart p = withContext (ContextTemplate m t p)
+
+checkIfaceImplementation ::
+     MonadGamma m
+  => ModuleName
+  -> NM.NameMap TemplateChoice
+  -> NM.NameMap DefInterface
+  -> Qualified TypeConName
+  -> m ()
+checkIfaceImplementation modName tpChoices ifaces tcon
+  | Qualified PRSelf m tconName <- tcon
+  , m == modName =
+    case NM.lookup tconName ifaces of
+      Nothing -> throwWithContext $ EUnknownInterface tcon
+      Just DefInterface {intChoices} -> do
+        forM_ intChoices $ \ifChoice@InterfaceChoice {ifcConsuming, ifcArgType, ifcRetType} -> do
+          case NM.lookup ifcName tpChoices of
+            Nothing -> throwWithContext $ EMissingInterfaceChoice ifcName
+            Just tplChoice@TemplateChoice {chcConsuming, chcArgBinder, chcReturnType}
+              | chcConsuming /= ifcConsuming -> throwWithContext $ EBadInterfaceChoiceImplConsuming tplChoice ifChoice
+              | snd chcArgBinder /= ifcArgType -> throwWithContext $ EBadInterfaceChoiceImplArgType tplChoice ifChoice
+              | chcReturnType /= ifcRetType -> throwWithContext $ EBadInterfaceChoiceImplRetType tplChoice ifChoice
+              | otherwise -> pure () -- all good
+  | otherwise = throwWithContext $ EForeignInterfaceImplementation tcon
 
 _checkFeature :: MonadGamma m => Feature -> m ()
 _checkFeature feature = do
@@ -857,10 +894,11 @@ checkDefException m DefException{..} = do
 -- The type checker for expressions relies on the fact that data type
 -- definitions do _not_ contain free variables.
 checkModule :: MonadGamma m => Module -> m ()
-checkModule m@(Module _modName _path _flags synonyms dataTypes values templates exceptions _interfaces) = do -- TODO interfaces
+checkModule m@(Module _modName _path _flags synonyms dataTypes values templates exceptions interfaces) = do -- TODO interfaces
   let with ctx f x = withContext (ctx x) (f x)
   traverse_ (with (ContextDefTypeSyn m) checkDefTypeSyn) synonyms
-  traverse_ (with (ContextDefDataType m) checkDefDataType) dataTypes
+  traverse_ (with (ContextDefDataType m) $ checkDefDataType interfaces) dataTypes
   traverse_ (with (\t -> ContextTemplate m t TPWhole) $ checkTemplate m) templates
   traverse_ (with (ContextDefException m) (checkDefException m)) exceptions
   traverse_ (with (ContextDefValue m) checkDefValue) values
+  traverse_ (with (ContextDefInterface m) checkIface) interfaces

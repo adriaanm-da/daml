@@ -29,6 +29,7 @@ data Context
   | ContextTemplate !Module !Template !TemplatePart
   | ContextDefValue !Module !DefValue
   | ContextDefException !Module !DefException
+  | ContextDefInterface !Module !DefInterface
 
 data TemplatePart
   = TPWhole
@@ -129,6 +130,8 @@ data Error
   | EForbiddenNameCollision !T.Text ![T.Text]
   | ESynAppWrongArity       !DefTypeSyn ![Type]
   | ENatKindRightOfArrow    !Kind
+  | EMissingInterfaceDefinition !TypeConName
+  | EDuplicateInterfaceChoiceName !TypeConName !ChoiceName
 
 contextLocation :: Context -> Maybe SourceLoc
 contextLocation = \case
@@ -138,6 +141,7 @@ contextLocation = \case
   ContextTemplate _ t _  -> tplLocation t
   ContextDefValue _ v    -> dvalLocation v
   ContextDefException _ e -> exnLocation e
+  ContextDefInterface _ i -> intLocation i
 
 errorLocation :: Error -> Maybe SourceLoc
 errorLocation = \case
@@ -157,6 +161,8 @@ instance Show Context where
       "value " <> show (moduleName m) <> "." <> show (fst $ dvalBinder v)
     ContextDefException m e ->
       "exception " <> show (moduleName m) <> "." <> show (exnName e)
+    ContextDefInterface m i ->
+      "interface " <> show (moduleName m) <> "." <> show (intName i)
 
 instance Show TemplatePart where
   show = \case
@@ -364,6 +370,11 @@ instance Pretty Error where
         [ "Kind is invalid: " <> pretty k
         , "Nat kind is not allowed on the right side of kind arrow."
         ]
+    EMissingInterfaceDefinition iface ->
+      "Missing interface definition for interface type: " <> pretty iface
+    EDuplicateInterfaceChoiceName iface choice ->
+      "Duplicate choice name '" <> pretty choice <> "' in interface definition for " <> pretty iface
+
 
 instance Pretty Context where
   pPrint = \case
@@ -379,6 +390,8 @@ instance Pretty Context where
       hsep [ "value", pretty (moduleName m) <> "." <> pretty (fst $ dvalBinder v) ]
     ContextDefException m e ->
       hsep [ "exception", pretty (moduleName m) <> "." <> pretty (exnName e) ]
+    ContextDefInterface m i ->
+      hsep [ "interface", pretty (moduleName m) <> "." <> pretty (intName i)]
 
 toDiagnostic :: DiagnosticSeverity -> Error -> Diagnostic
 toDiagnostic sev err = Diagnostic

@@ -142,7 +142,7 @@ lookupTemplate :: Qualified TypeConName -> World -> Either LookupError Template
 lookupTemplate = lookupDefinition moduleTemplates LETemplate
 
 lookupInterface :: Qualified TypeConName -> World -> Either LookupError DefInterface
-lookupInterface = lookupDefinition moduleInterface LEInterface
+lookupInterface = lookupDefinition moduleInterfaces LEInterface
 
 lookupException :: Qualified TypeConName -> World -> Either LookupError DefException
 lookupException = lookupDefinition moduleExceptions LEException
@@ -163,13 +163,19 @@ lookupInterfaceChoice (ifaceRef, chName) world = do
 
 lookupTemplateOrInterface :: Qualified TypeConName -> World -> Either LookupError (Either Template DefInterface)
 lookupTemplateOrInterface name world
-    = Right <$> lookupInterface name world
-    <|> Left <$> lookupTemplate name world
+    = case lookupInterface name world of
+        Left _err -> case lookupTemplate name world of
+          Left err -> Left err
+          Right tmpl -> Right (Left tmpl)
+        Right iface -> Right (Right iface)
 
 lookupTemplateOrInterfaceChoice :: (Qualified TypeConName, ChoiceName) -> World -> Either LookupError (Either TemplateChoice InterfaceChoice)
 lookupTemplateOrInterfaceChoice name world
-    = Right <$> lookupInterfaceChoice name world
-    <|> Left <$> lookupChoice name world
+    = case lookupInterfaceChoice name world of
+        Left _err -> case lookupChoice name world of
+          Left err -> Left err
+          Right ch -> Right (Left ch)
+        Right ifaceCh -> Right (Right ifaceCh)
 
 instance Pretty LookupError where
   pPrint = \case
@@ -182,3 +188,4 @@ instance Pretty LookupError where
     LETemplate tplRef -> "unknown template:" <-> pretty tplRef
     LEException exnRef -> "unknown exception:" <-> pretty exnRef
     LEChoice tplRef chName -> "unknown choice:" <-> pretty tplRef <> ":" <> pretty chName
+    LEInterface ifaceRef -> "unknown interface" <-> pretty ifaceRef
