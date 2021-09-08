@@ -24,14 +24,14 @@ class ValueSerializerTest extends AnyWordSpec with Matchers with TableDrivenProp
 
       forEvery(negativeTestCases) { version =>
         val x = ValueSerializer.DeprecatedValueVersionsError.unapply(
-          ValueCoder.decodeValue(ValueCoder.CidDecoder, valueBuilder.setVersion(version).build())
+          ValueCoder.decodeValue(valueBuilder.setVersion(version).build())
         )
         x shouldBe None
       }
 
       forEvery(positiveTestCases) { version =>
         val x = ValueSerializer.DeprecatedValueVersionsError.unapply(
-          ValueCoder.decodeValue(ValueCoder.CidDecoder, valueBuilder.setVersion(version).build())
+          ValueCoder.decodeValue(valueBuilder.setVersion(version).build())
         )
         x shouldBe Some(version)
       }

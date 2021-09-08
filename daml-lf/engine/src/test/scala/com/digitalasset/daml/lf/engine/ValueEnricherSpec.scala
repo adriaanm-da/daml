@@ -155,9 +155,9 @@ class ValueEnricherSpec extends AnyWordSpec with Matchers with TableDrivenProper
     val alice = Ref.Party.assertFromString("Alice")
 
     def buildTransaction(
-        contract: Value[ContractId],
-        key: Value[ContractId],
-        record: Value[ContractId],
+        contract: Value,
+        key: Value,
+        record: Value,
     ) = {
       val builder = TransactionBuilder(TransactionVersion.minTypeErasure)
       val create =

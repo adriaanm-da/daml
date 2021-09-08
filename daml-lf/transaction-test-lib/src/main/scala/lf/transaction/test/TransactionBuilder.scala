@@ -64,7 +64,7 @@ final class TransactionBuilder(
         rb.copy(children = children(nid).toImmArray)
       case (nid, exe: TxExercise) =>
         exe.copy(children = children(nid).toImmArray)
-      case (_, node: Node.LeafOnlyActionNode[ContractId]) =>
+      case (_, node: Node.LeafOnlyActionNode) =>
         node
     }
     val finalRoots = roots.toImmArray
@@ -84,7 +84,7 @@ final class TransactionBuilder(
   def newCid: ContractId = ContractId.V1(newHash())
 
   def versionContract(contract: ContractInst[Value]): ContractInst[TxValue] =
-    ContractInst.map1[Value, TxValue](transactionValue(contract.template))(contract)
+    contract.map(transactionValue(contract.template))
 
   private[this] def transactionValue(templateId: Ref.TypeConName): Value => TxValue =
     value.Value.VersionedValue(pkgTxVersion(templateId.packageId), _)
@@ -206,19 +206,19 @@ final class TransactionBuilder(
 
 object TransactionBuilder {
 
-  type Value = value.Value[ContractId]
-  type TxValue = value.Value.VersionedValue[ContractId]
-  type Node = Node.GenNode[NodeId, ContractId]
-  type TxNode = Node.GenNode[NodeId, ContractId]
+  type Value = value.Value
+  type TxValue = value.Value.VersionedValue
+  type Node = Node.GenNode[NodeId]
+  type TxNode = Node.GenNode[NodeId]
 
-  type Create = Node.NodeCreate[ContractId]
-  type Exercise = Node.NodeExercises[NodeId, ContractId]
-  type Fetch = Node.NodeFetch[ContractId]
-  type LookupByKey = Node.NodeLookupByKey[ContractId]
+  type Create = Node.NodeCreate
+  type Exercise = Node.NodeExercises[NodeId]
+  type Fetch = Node.NodeFetch
+  type LookupByKey = Node.NodeLookupByKey
   type Rollback = Node.NodeRollback[NodeId]
   type KeyWithMaintainers = Node.KeyWithMaintainers[Value]
 
-  type TxExercise = Node.NodeExercises[NodeId, ContractId]
+  type TxExercise = Node.NodeExercises[NodeId]
   type TxRollback = Node.NodeRollback[NodeId]
   type TxKeyWithMaintainers = Node.KeyWithMaintainers[TxValue]
   type TxRollBack = Node.NodeRollback[NodeId]

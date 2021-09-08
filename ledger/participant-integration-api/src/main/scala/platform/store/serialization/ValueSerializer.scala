@@ -5,27 +5,26 @@ package com.daml.platform.store.serialization
 
 import java.io.InputStream
 
-import com.daml.lf.value.Value.{ContractId, VersionedValue}
+import com.daml.lf.value.Value.VersionedValue
 import com.daml.lf.value.{ValueCoder, ValueOuterClass}
 
 private[platform] object ValueSerializer {
 
   def serializeValue(
-      value: VersionedValue[ContractId],
+      value: VersionedValue,
       errorContext: => String,
   ): Array[Byte] =
     ValueCoder
-      .encodeVersionedValue(ValueCoder.CidEncoder, value)
+      .encodeVersionedValue(value)
       .fold(error => sys.error(s"$errorContext (${error.errorMessage})"), _.toByteArray)
 
   private def deserializeValueHelper(
       stream: InputStream,
       errorContext: => Option[String],
-  ): VersionedValue[ContractId] =
+  ): VersionedValue =
     ValueCoder
       .decodeVersionedValue(
-        ValueCoder.CidDecoder,
-        ValueOuterClass.VersionedValue.parseFrom(stream),
+        ValueOuterClass.VersionedValue.parseFrom(stream)
       )
       .fold(
         error =>
@@ -35,13 +34,13 @@ private[platform] object ValueSerializer {
 
   def deserializeValue(
       stream: InputStream
-  ): VersionedValue[ContractId] =
+  ): VersionedValue =
     deserializeValueHelper(stream, None)
 
   def deserializeValue(
       stream: InputStream,
       errorContext: => String,
-  ): VersionedValue[ContractId] =
+  ): VersionedValue =
     deserializeValueHelper(stream, Some(errorContext))
 
 }

@@ -48,7 +48,7 @@ class KVUtilsTransactionSpec extends AnyWordSpec with Matchers with Inside {
 
   "transaction" should {
 
-    val templateArgs: Map[TestDar, SimplePackage => Value[ContractId]] = Map(
+    val templateArgs: Map[TestDar, SimplePackage => Value] = Map(
       SimplePackagePartyTestDar -> (_ => bobValue),
       SimplePackageOptionalTestDar -> (_ => ValueOptional(Some(bobValue))),
       SimplePackageListTestDar -> (_ => ValueList(FrontStack(bobValue))),
@@ -590,7 +590,7 @@ class KVUtilsTransactionSpec extends AnyWordSpec with Matchers with Inside {
 
   private def contractIdOfCreateTransaction(updates: Seq[Update]): ContractId =
     inside(updates) { case Seq(update: Update.TransactionAccepted) =>
-      inside(update.transaction.nodes.values.toSeq) { case Seq(create: NodeCreate[ContractId]) =>
+      inside(update.transaction.nodes.values.toSeq) { case Seq(create: NodeCreate) =>
         create.coid
       }
     }
@@ -598,7 +598,7 @@ class KVUtilsTransactionSpec extends AnyWordSpec with Matchers with Inside {
   private def simpleCreateCmd(simplePackage: SimplePackage): ApiCommand =
     simplePackage.simpleCreateCmd(mkSimpleCreateArg(simplePackage))
 
-  private def mkSimpleCreateArg(simplePackage: SimplePackage): Value[ContractId] =
+  private def mkSimpleCreateArg(simplePackage: SimplePackage): Value =
     simplePackage.mkSimpleTemplateArg("Alice", "Eve", bobValue)
 
   private def seed(i: Int): Hash = hash(this.getClass.getName + i.toString)

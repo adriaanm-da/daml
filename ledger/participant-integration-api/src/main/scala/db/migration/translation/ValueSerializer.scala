@@ -6,7 +6,7 @@ package db.migration.translation
 
 import java.io.InputStream
 
-import com.daml.lf.value.Value.{ContractId, VersionedValue}
+import com.daml.lf.value.Value.VersionedValue
 import com.daml.lf.value.{ValueCoder, ValueOuterClass}
 import com.google.protobuf.CodedInputStream
 import org.slf4j.LoggerFactory
@@ -45,7 +45,7 @@ private[migration] object ValueSerializer {
   }
 
   def serializeValue(
-      value: VersionedValue[ContractId],
+      value: VersionedValue,
       errorContext: => String,
   ): Array[Byte] = store.serialization.ValueSerializer.serializeValue(value, errorContext)
 
@@ -60,12 +60,11 @@ private[migration] object ValueSerializer {
   private[this] def deserializeValueHelper(
       stream: InputStream,
       errorContext: => Option[String],
-  ): VersionedValue[ContractId] =
+  ): VersionedValue =
     handleDeprecatedValueVersions(
       ValueCoder
         .decodeVersionedValue(
-          ValueCoder.CidDecoder,
-          ValueOuterClass.VersionedValue.parseFrom(lfValueCodedInputStream(stream)),
+          ValueOuterClass.VersionedValue.parseFrom(lfValueCodedInputStream(stream))
         )
     )
       .fold(
@@ -76,13 +75,13 @@ private[migration] object ValueSerializer {
 
   def deserializeValue(
       stream: InputStream
-  ): VersionedValue[ContractId] =
+  ): VersionedValue =
     deserializeValueHelper(stream, None)
 
   def deserializeValue(
       stream: InputStream,
       errorContext: => String,
-  ): VersionedValue[ContractId] =
+  ): VersionedValue =
     deserializeValueHelper(stream, Some(errorContext))
 
 }

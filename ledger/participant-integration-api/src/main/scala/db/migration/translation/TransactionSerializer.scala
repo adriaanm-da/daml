@@ -7,7 +7,6 @@ import java.io.InputStream
 
 import com.daml.lf.data.Ref.LedgerString
 import com.daml.lf.transaction.{CommittedTransaction, TransactionCoder, TransactionOuterClass}
-import com.daml.lf.value.ValueCoder
 import com.daml.lf.value.ValueCoder.{DecodeError, EncodeError}
 
 private[migration] trait TransactionSerializer {
@@ -33,7 +32,6 @@ private[migration] object TransactionSerializer extends TransactionSerializer {
     TransactionCoder
       .encodeTransaction(
         TransactionCoder.EventIdEncoder(trId),
-        ValueCoder.CidEncoder,
         transaction,
       )
       .map(_.toByteArray())
@@ -47,7 +45,6 @@ private[migration] object TransactionSerializer extends TransactionSerializer {
         TransactionCoder
           .decodeTransaction(
             TransactionCoder.EventIdDecoder(trId),
-            ValueCoder.CidDecoder,
             TransactionOuterClass.Transaction
               .parseFrom(ValueSerializer.lfValueCodedInputStream(stream)),
           )

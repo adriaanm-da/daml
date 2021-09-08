@@ -30,11 +30,11 @@ sealed trait SValue {
   /** Convert a speedy-value to a value which may not be correctly normalized.
     * And so the resulting value should not be serialized.
     */
-  def toUnnormalizedValue: V[V.ContractId] = SValue.toValue(this)
+  def toUnnormalizedValue: V = SValue.toValue(this)
 
   /** Convert a speedy-value to a value normalized according to the LF version.
     */
-  def toNormalizedValue(version: TransactionVersion): V[V.ContractId] = {
+  def toNormalizedValue(version: TransactionVersion): V = {
     val v = SValue.toValue(this)
     Util.assertNormalizeValue(v, version) //TODO: avoid separate pass; inline norm into toValue
   }
@@ -73,7 +73,7 @@ sealed trait SValue {
 
 object SValue {
 
-  def toValue(v: SValue, maxNesting: Int = V.MAXIMUM_NESTING): V[V.ContractId] = {
+  def toValue(v: SValue, maxNesting: Int = V.MAXIMUM_NESTING): V = {
     if (maxNesting < 0)
       throw SError.SErrorDamlException(interpretation.Error.ValueExceedsMaxNesting)
     val nextMaxNesting = maxNesting - 1

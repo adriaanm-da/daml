@@ -1384,7 +1384,7 @@ object UpdateToDbDtoSpec {
   private val valueSerialization = new LfValueSerialization {
     override def serialize(
         contractId: ContractId,
-        contractArgument: Value.VersionedValue[ContractId],
+        contractArgument: Value.VersionedValue,
     ): Array[Byte] = emptyArray
 
     /** Returns (contract argument, contract key) */

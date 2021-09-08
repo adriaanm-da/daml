@@ -10,7 +10,6 @@ import com.daml.lf.data.ImmArray
 import com.daml.lf.data.Ref.{Name, Party}
 import com.daml.lf.transaction.Node._
 import com.daml.lf.value.{Value, ValueCoder, ValueOuterClass}
-import com.daml.lf.value.Value.ContractId
 import com.daml.lf.value.ValueCoder.{DecodeError, EncodeError}
 import com.google.protobuf.{ByteString, GeneratedMessageV3, ProtocolStringList}
 
@@ -62,13 +61,12 @@ object TransactionCoder {
           )
     }
 
-  def encodeVersionedValue[Cid](
-      cidEncoder: ValueCoder.EncodeCid[Cid],
+  def encodeVersionedValue(
       enclosingVersion: TransactionVersion,
-      value: Value.VersionedValue[Cid],
+      value: Value.VersionedValue,
   ): Either[EncodeError, ValueOuterClass.VersionedValue] =
     if (enclosingVersion == value.version)
-      ValueCoder.encodeVersionedValue(cidEncoder, value)
+      ValueCoder.encodeVersionedValue(value)
     else
       Left(
         EncodeError(
@@ -76,26 +74,23 @@ object TransactionCoder {
         )
       )
 
-  private[this] def encodeValue[Cid](
-      cidEncoder: ValueCoder.EncodeCid[Cid],
+  private[this] def encodeValue(
       nodeVersion: TransactionVersion,
-      value: Value[Cid],
+      value: Value,
   ): Either[EncodeError, ByteString] =
-    ValueCoder.encodeValue(cidEncoder, nodeVersion, value)
+    ValueCoder.encodeValue(nodeVersion, value)
 
-  private[this] def encodeVersionedValue[Cid](
-      cidEncoder: ValueCoder.EncodeCid[Cid],
+  private[this] def encodeVersionedValue(
       nodeVersion: TransactionVersion,
-      value: Value[Cid],
+      value: Value,
   ): Either[EncodeError, ValueOuterClass.VersionedValue] =
-    ValueCoder.encodeVersionedValue(cidEncoder, nodeVersion, value)
+    ValueCoder.encodeVersionedValue(nodeVersion, value)
 
-  private[this] def decodeValue[Cid](
-      cidDecoder: ValueCoder.DecodeCid[Cid],
+  private[this] def decodeValue(
       nodeVersion: TransactionVersion,
       value: ValueOuterClass.VersionedValue,
-  ): Either[DecodeError, Value[Cid]] =
-    ValueCoder.decodeVersionedValue(cidDecoder, value).flatMap {
+  ): Either[DecodeError, Value] =
+    ValueCoder.decodeVersionedValue(value).flatMap {
       case Value.VersionedValue(`nodeVersion`, value) => Right(value)
       case Value.VersionedValue(version, _) =>
         Left(
@@ -108,15 +103,13 @@ object TransactionCoder {
   /** Encodes a contract instance with the help of the contractId encoding function
     *
     * @param coinst    the contract instance to be encoded
-    * @param encodeCid function to encode a cid to protobuf
     * @return protobuf wire format contract instance
     */
   def encodeContractInstance[Cid](
-      encodeCid: ValueCoder.EncodeCid[Cid],
-      coinst: Value.ContractInst[Value.VersionedValue[Cid]],
+      coinst: Value.ContractInst[Value.VersionedValue]
   ): Either[EncodeError, TransactionOuterClass.ContractInstance] =
     ValueCoder
-      .encodeVersionedValue(encodeCid, coinst.arg)
+      .encodeVersionedValue(coinst.arg)
       .map(
         TransactionOuterClass.ContractInstance
           .newBuilder()
@@ -127,13 +120,12 @@ object TransactionCoder {
       )
 
   private def encodeContractInstance[Cid](
-      encodeCid: ValueCoder.EncodeCid[Cid],
       version: TransactionVersion,
       templateId: Ref.Identifier,
-      arg: Value[Cid],
+      arg: Value,
       agreementText: String,
   ) =
-    encodeVersionedValue(encodeCid, version, arg).map(
+    encodeVersionedValue(version, arg).map(
       TransactionOuterClass.ContractInstance
         .newBuilder()
         .setTemplateId(ValueCoder.encodeIdentifier(templateId))
@@ -145,41 +137,36 @@ object TransactionCoder {
   /** Decode a contract instance from wire format
     *
     * @param protoCoinst protocol buffer encoded contract instance
-    * @param decodeCid   cid decoding function
     * @return contract instance value
     */
   def decodeContractInstance[Cid](
-      decodeCid: ValueCoder.DecodeCid[Cid],
-      protoCoinst: TransactionOuterClass.ContractInstance,
-  ): Either[DecodeError, Value.ContractInst[Value[Cid]]] =
+      protoCoinst: TransactionOuterClass.ContractInstance
+  ): Either[DecodeError, Value.ContractInst[Value]] =
     for {
       id <- ValueCoder.decodeIdentifier(protoCoinst.getTemplateId)
-      value <- ValueCoder.decodeValue(decodeCid, protoCoinst.getArgVersioned)
+      value <- ValueCoder.decodeValue(protoCoinst.getArgVersioned)
     } yield Value.ContractInst(id, value, (protoCoinst.getAgreement))
 
   private[this] def decodeContractInstance[Cid](
-      decodeCid: ValueCoder.DecodeCid[Cid],
       nodeVersion: TransactionVersion,
       protoCoinst: TransactionOuterClass.ContractInstance,
-  ): Either[DecodeError, Value.ContractInst[Value[Cid]]] =
+  ): Either[DecodeError, Value.ContractInst[Value]] =
     for {
       id <- ValueCoder.decodeIdentifier(protoCoinst.getTemplateId)
-      value <- decodeValue(decodeCid, nodeVersion, protoCoinst.getArgVersioned)
+      value <- decodeValue(nodeVersion, protoCoinst.getArgVersioned)
     } yield Value.ContractInst(id, value, protoCoinst.getAgreement)
 
   def decodeVersionedContractInstance[Cid](
-      decodeCid: ValueCoder.DecodeCid[Cid],
-      protoCoinst: TransactionOuterClass.ContractInstance,
-  ): Either[DecodeError, Value.ContractInst[Value.VersionedValue[Cid]]] =
+      protoCoinst: TransactionOuterClass.ContractInstance
+  ): Either[DecodeError, Value.ContractInst[Value.VersionedValue]] =
     for {
       id <- ValueCoder.decodeIdentifier(protoCoinst.getTemplateId)
-      value <- ValueCoder.decodeVersionedValue(decodeCid, protoCoinst.getArgVersioned)
+      value <- ValueCoder.decodeVersionedValue(protoCoinst.getArgVersioned)
     } yield Value.ContractInst(id, value, (protoCoinst.getAgreement))
 
   private[this] def encodeKeyWithMaintainers[Cid](
-      encodeCid: ValueCoder.EncodeCid[Cid],
       version: TransactionVersion,
-      key: KeyWithMaintainers[Value[Cid]],
+      key: KeyWithMaintainers[Value],
   ): Either[EncodeError, TransactionOuterClass.KeyWithMaintainers] = {
     val builder =
       TransactionOuterClass.KeyWithMaintainers
@@ -187,65 +174,61 @@ object TransactionCoder {
         .addAllMaintainers(key.maintainers.toSet[String].asJava)
     if (version < TransactionVersion.minNoVersionValue) {
       ValueCoder
-        .encodeVersionedValue(encodeCid, version, key.key)
+        .encodeVersionedValue(version, key.key)
         .map(builder.setKeyVersioned(_).build())
     } else {
       ValueCoder
-        .encodeValue(encodeCid, version, key.key)
+        .encodeValue(version, key.key)
         .map(builder.setKeyUnversioned(_).build())
     }
   }
 
   private[this] def encodeAndSetContractKey[Cid](
-      encodeCid: ValueCoder.EncodeCid[Cid],
       version: TransactionVersion,
-      key: Option[KeyWithMaintainers[Value[Cid]]],
+      key: Option[KeyWithMaintainers[Value]],
       setKey: TransactionOuterClass.KeyWithMaintainers => GeneratedMessageV3.Builder[_],
   ) = {
     key match {
       case Some(key) =>
-        encodeKeyWithMaintainers(encodeCid, version, key).map { k => setKey(k); () }
+        encodeKeyWithMaintainers(version, key).map { k => setKey(k); () }
       case None =>
         Right(())
     }
   }
 
-  private[this] def encodeAndSetValue[Cid](
-      encodeCid: ValueCoder.EncodeCid[Cid],
+  private[this] def encodeAndSetValue(
       version: TransactionVersion,
-      value: Value[Cid],
+      value: Value,
       setVersioned: ValueOuterClass.VersionedValue => GeneratedMessageV3.Builder[_],
       setUnversioned: ByteString => GeneratedMessageV3.Builder[_],
   ): Either[EncodeError, Unit] = {
     if (version < TransactionVersion.minNoVersionValue) {
-      encodeVersionedValue(encodeCid, version, value).map { v =>
+      encodeVersionedValue(version, value).map { v =>
         setVersioned(v);
         {}
       }
     } else {
-      encodeValue(encodeCid, version, value).map { v =>
+      encodeValue(version, value).map { v =>
         setUnversioned(v)
         ()
       }
     }
   }
 
-  /** encodes a [[GenNode[Nid, Cid]] to protocol buffer
+  /** encodes a [[GenNode[Nid]] to protocol buffer
     *
     * @param nodeId    node id of the node to be encoded
     * @param node      the node to be encoded
     * @param encodeNid node id encoding to string
-    * @param encodeCid contract id encoding to string
     * @tparam Nid node id type
     * @tparam Cid contract id type
     * @return protocol buffer format node
     */
-  private[lf] def encodeNode[Nid, Cid](
+  private[lf] def encodeNode[Nid](
       encodeNid: EncodeNid[Nid],
-      encodeCid: ValueCoder.EncodeCid[Cid],
       enclosingVersion: TransactionVersion,
       nodeId: Nid,
-      node: GenNode[Nid, Cid],
+      node: GenNode[Nid],
       disableVersionCheck: Boolean =
         false, //true allows encoding of bad protos (for testing of decode checks)
   ): Either[EncodeError, TransactionOuterClass.Node] = {
@@ -265,7 +248,7 @@ object TransactionCoder {
           )
         } yield nodeBuilder.setRollback(builder).build()
 
-      case node: GenActionNode[_, _] =>
+      case node: GenActionNode[_] =>
         val nodeVersion = node.version
         if (enclosingVersion < nodeVersion)
           Left(
@@ -283,12 +266,11 @@ object TransactionCoder {
               val builder = TransactionOuterClass.NodeCreate.newBuilder()
               nc.stakeholders.foreach(builder.addStakeholders)
               nc.signatories.foreach(builder.addSignatories)
-              builder.setContractIdStruct(encodeCid.encode(nc.coid))
+              builder.setContractIdStruct(ValueCoder.CidEncoder.encode(nc.coid))
               for {
                 _ <-
                   if (nodeVersion < TransactionVersion.minNoVersionValue) {
                     encodeContractInstance(
-                      encodeCid,
                       nc.version,
                       nc.templateId,
                       nc.arg,
@@ -296,14 +278,13 @@ object TransactionCoder {
                     )
                       .map(builder.setContractInstance)
                   } else {
-                    encodeValue(encodeCid, nodeVersion, nc.coinst.arg).map { arg =>
+                    encodeValue(nodeVersion, nc.coinst.arg).map { arg =>
                       builder.setTemplateId(ValueCoder.encodeIdentifier(nc.templateId))
                       builder.setArgUnversioned(arg)
                       builder.setAgreement(nc.coinst.agreementText)
                     }
                   }
                 _ <- encodeAndSetContractKey(
-                  encodeCid,
                   nodeVersion,
                   nc.key,
                   builder.setKeyWithMaintainers,
@@ -315,14 +296,13 @@ object TransactionCoder {
               builder.setTemplateId(ValueCoder.encodeIdentifier(nf.templateId))
               nf.stakeholders.foreach(builder.addStakeholders)
               nf.signatories.foreach(builder.addSignatories)
-              builder.setContractIdStruct(encodeCid.encode(nf.coid))
+              builder.setContractIdStruct(ValueCoder.CidEncoder.encode(nf.coid))
               if (nodeVersion >= TransactionVersion.minByKey) {
                 builder.setByKey(nf.byKey)
               }
               nf.actingParties.foreach(builder.addActors)
               for {
                 _ <- encodeAndSetContractKey(
-                  encodeCid,
                   nodeVersion,
                   nf.key,
                   builder.setKeyWithMaintainers,
@@ -331,7 +311,7 @@ object TransactionCoder {
 
             case ne @ NodeExercises(_, _, _, _, _, _, _, _, _, _, _, _, _, _) =>
               val builder = TransactionOuterClass.NodeExercise.newBuilder()
-              builder.setContractIdStruct(encodeCid.encode(ne.targetCoid))
+              builder.setContractIdStruct(ValueCoder.CidEncoder.encode(ne.targetCoid))
               builder.setChoice(ne.choiceId)
               builder.setTemplateId(ValueCoder.encodeIdentifier(ne.templateId))
               builder.setConsuming(ne.consuming)
@@ -351,7 +331,6 @@ object TransactionCoder {
                   left = EncodeError(nodeVersion, isTooOldFor = "non-empty choice-observers"),
                 )
                 _ <- encodeAndSetValue(
-                  encodeCid,
                   nodeVersion,
                   ne.chosenValue,
                   builder.setArgVersioned,
@@ -360,7 +339,6 @@ object TransactionCoder {
                 _ <- ne.exerciseResult match {
                   case Some(value) =>
                     encodeAndSetValue(
-                      encodeCid,
                       nodeVersion,
                       value,
                       builder.setResultVersioned,
@@ -374,7 +352,6 @@ object TransactionCoder {
                     )
                 }
                 _ <- encodeAndSetContractKey(
-                  encodeCid,
                   nodeVersion,
                   ne.key,
                   builder.setKeyWithMaintainers,
@@ -384,9 +361,11 @@ object TransactionCoder {
             case nlbk @ NodeLookupByKey(_, _, _, _) =>
               val builder = TransactionOuterClass.NodeLookupByKey.newBuilder()
               builder.setTemplateId(ValueCoder.encodeIdentifier(nlbk.templateId))
-              nlbk.result.foreach(cid => builder.setContractIdStruct(encodeCid.encode(cid)))
+              nlbk.result.foreach(cid =>
+                builder.setContractIdStruct(ValueCoder.CidEncoder.encode(cid))
+              )
               for {
-                encodedKey <- encodeKeyWithMaintainers(encodeCid, nlbk.version, nlbk.key)
+                encodedKey <- encodeKeyWithMaintainers(nlbk.version, nlbk.key)
               } yield {
                 builder.setKeyWithMaintainers(encodedKey)
                 nodeBuilder.setLookupByKey(builder).build()
@@ -397,14 +376,12 @@ object TransactionCoder {
   }
 
   private[this] def decodeKeyWithMaintainers[Cid](
-      decodeCid: ValueCoder.DecodeCid[Cid],
       version: TransactionVersion,
       keyWithMaintainers: TransactionOuterClass.KeyWithMaintainers,
-  ): Either[DecodeError, KeyWithMaintainers[Value[Cid]]] = {
+  ): Either[DecodeError, KeyWithMaintainers[Value]] = {
     for {
       maintainers <- toPartySet(keyWithMaintainers.getMaintainersList)
       key <- decodeValue(
-        decodeCid,
         version,
         keyWithMaintainers.getKeyVersioned,
         keyWithMaintainers.getKeyUnversioned,
@@ -415,17 +392,15 @@ object TransactionCoder {
   private val RightNone = Right(None)
 
   private[this] def decodeOptionalKeyWithMaintainers[Cid](
-      decodeCid: ValueCoder.DecodeCid[Cid],
       version: TransactionVersion,
       keyWithMaintainers: TransactionOuterClass.KeyWithMaintainers,
-  ): Either[DecodeError, Option[KeyWithMaintainers[Value[Cid]]]] = {
+  ): Either[DecodeError, Option[KeyWithMaintainers[Value]]] = {
     if (keyWithMaintainers == TransactionOuterClass.KeyWithMaintainers.getDefaultInstance) {
       RightNone
     } else {
       for {
         maintainers <- toPartySet(keyWithMaintainers.getMaintainersList)
         key <- decodeValue(
-          decodeCid,
           version,
           keyWithMaintainers.getKeyVersioned,
           keyWithMaintainers.getKeyUnversioned,
@@ -435,45 +410,41 @@ object TransactionCoder {
   }
 
   // package private for test, do not use outside TransactionCoder
-  private[lf] def decodeValue[Cid](
-      decodeCid: ValueCoder.DecodeCid[Cid],
+  private[lf] def decodeValue(
       version: TransactionVersion,
       versionedProto: => ValueOuterClass.VersionedValue,
       unversionedProto: => ByteString,
-  ): Either[DecodeError, Value[Cid]] = {
+  ): Either[DecodeError, Value] = {
     if (version < TransactionVersion.minNoVersionValue) {
-      decodeValue(decodeCid, version, versionedProto)
+      decodeValue(version, versionedProto)
     } else {
-      ValueCoder.decodeValue(decodeCid, version, unversionedProto)
+      ValueCoder.decodeValue(version, unversionedProto)
     }
   }
 
-  /** read a [[GenNode[Nid, Cid]] from protobuf
+  /** read a [[GenNode[Nid]] from protobuf
     *
     * @param protoNode protobuf encoded node
     * @param decodeNid function to read node id from String
-    * @param decodeCid function to read contract id from String
     * @tparam Nid Node id type
     * @tparam Cid Contract id type
     * @return decoded GenNode
     */
-  private[lf] def decodeVersionedNode[Nid, Cid](
+  private[lf] def decodeVersionedNode[Nid](
       decodeNid: DecodeNid[Nid],
-      decodeCid: ValueCoder.DecodeCid[Cid],
       transactionVersion: TransactionVersion,
       protoNode: TransactionOuterClass.Node,
-  ): Either[DecodeError, (Nid, GenNode[Nid, Cid])] =
+  ): Either[DecodeError, (Nid, GenNode[Nid])] =
     for {
       nodeVersion <- decodeNodeVersion(transactionVersion, protoNode)
-      node <- decodeNode(decodeNid, decodeCid, nodeVersion, protoNode)
+      node <- decodeNode(decodeNid, nodeVersion, protoNode)
     } yield node
 
-  private[this] def decodeNode[Nid, Cid](
+  private[this] def decodeNode[Nid](
       decodeNid: DecodeNid[Nid],
-      decodeCid: ValueCoder.DecodeCid[Cid],
       nodeVersion: TransactionVersion,
       protoNode: TransactionOuterClass.Node,
-  ): Either[DecodeError, (Nid, GenNode[Nid, Cid])] = {
+  ): Either[DecodeError, (Nid, GenNode[Nid])] = {
     val nodeId = decodeNid.fromString(protoNode.getNodeId)
 
     protoNode.getNodeTypeCase match {
@@ -494,20 +465,19 @@ object TransactionCoder {
         val protoCreate = protoNode.getCreate
         for {
           ni <- nodeId
-          c <- decodeCid.decode(protoCreate.getContractIdStruct)
+          c <- ValueCoder.CidDecoder.decode(protoCreate.getContractIdStruct)
           ci <-
             if (nodeVersion < TransactionVersion.minNoVersionValue) {
-              decodeContractInstance(decodeCid, nodeVersion, protoCreate.getContractInstance)
+              decodeContractInstance(nodeVersion, protoCreate.getContractInstance)
             } else {
               for {
                 tmplId <- ValueCoder.decodeIdentifier(protoCreate.getTemplateId)
-                arg <- ValueCoder.decodeValue(decodeCid, nodeVersion, protoCreate.getArgUnversioned)
+                arg <- ValueCoder.decodeValue(nodeVersion, protoCreate.getArgUnversioned)
               } yield Value.ContractInst(tmplId, arg, protoCreate.getAgreement)
             }
           stakeholders <- toPartySet(protoCreate.getStakeholdersList)
           signatories <- toPartySet(protoCreate.getSignatoriesList)
           key <- decodeOptionalKeyWithMaintainers(
-            decodeCid,
             nodeVersion,
             protoCreate.getKeyWithMaintainers,
           )
@@ -526,12 +496,11 @@ object TransactionCoder {
         for {
           ni <- nodeId
           templateId <- ValueCoder.decodeIdentifier(protoFetch.getTemplateId)
-          c <- decodeCid.decode(protoFetch.getContractIdStruct)
+          c <- ValueCoder.CidDecoder.decode(protoFetch.getContractIdStruct)
           actingParties <- toPartySet(protoFetch.getActorsList)
           stakeholders <- toPartySet(protoFetch.getStakeholdersList)
           signatories <- toPartySet(protoFetch.getSignatoriesList)
           key <- decodeOptionalKeyWithMaintainers(
-            decodeCid,
             nodeVersion,
             protoFetch.getKeyWithMaintainers,
           )
@@ -564,19 +533,17 @@ object TransactionCoder {
               )
             } else {
               decodeValue(
-                decodeCid,
                 nodeVersion,
                 protoExe.getResultVersioned,
                 protoExe.getResultUnversioned,
               ).map { v => Some(v) }
             }
           keyWithMaintainers <-
-            decodeOptionalKeyWithMaintainers(decodeCid, nodeVersion, protoExe.getKeyWithMaintainers)
+            decodeOptionalKeyWithMaintainers(nodeVersion, protoExe.getKeyWithMaintainers)
           ni <- nodeId
-          targetCoid <- decodeCid.decode(protoExe.getContractIdStruct)
+          targetCoid <- ValueCoder.CidDecoder.decode(protoExe.getContractIdStruct)
           children <- decodeChildren(decodeNid, protoExe.getChildrenList)
           cv <- decodeValue(
-            decodeCid,
             nodeVersion,
             protoExe.getArgVersioned,
             protoExe.getArgUnversioned,
@@ -618,9 +585,9 @@ object TransactionCoder {
           ni <- nodeId
           templateId <- ValueCoder.decodeIdentifier(protoLookupByKey.getTemplateId)
           key <-
-            decodeKeyWithMaintainers(decodeCid, nodeVersion, protoLookupByKey.getKeyWithMaintainers)
-          cid <- decodeCid.decodeOptional(protoLookupByKey.getContractIdStruct)
-        } yield ni -> NodeLookupByKey[Cid](templateId, key, cid, nodeVersion)
+            decodeKeyWithMaintainers(nodeVersion, protoLookupByKey.getKeyWithMaintainers)
+          cid <- ValueCoder.CidDecoder.decodeOptional(protoLookupByKey.getContractIdStruct)
+        } yield ni -> NodeLookupByKey(templateId, key, cid, nodeVersion)
       case NodeTypeCase.NODETYPE_NOT_SET => Left(DecodeError("Unset Node type"))
     }
   }
@@ -637,23 +604,20 @@ object TransactionCoder {
       .map(_.toImmArray)
   }
 
-  /** Encode a [[GenTransaction[Nid, Cid]]] to protobuf using [[TransactionVersion]] provided by the libary.
+  /** Encode a [[GenTransaction[Nid]]] to protobuf using [[TransactionVersion]] provided by the libary.
     *
     * @param tx        the transaction to be encoded
     * @param encodeNid node id encoding function
-    * @param encodeCid contract id encoding function
     * @tparam Nid node id type
     * @tparam Cid contract id type
     * @return protobuf encoded transaction
     */
-  def encodeTransaction[Nid, Cid <: ContractId](
+  def encodeTransaction[Nid](
       encodeNid: EncodeNid[Nid],
-      encodeCid: ValueCoder.EncodeCid[Cid],
-      tx: VersionedTransaction[Nid, Cid],
+      tx: VersionedTransaction[Nid],
   ): Either[EncodeError, TransactionOuterClass.Transaction] =
     encodeTransactionWithCustomVersion(
       encodeNid,
-      encodeCid,
       tx,
     )
 
@@ -661,15 +625,13 @@ object TransactionCoder {
     *
     * @param transaction the transaction to be encoded
     * @param encodeNid   node id encoding function
-    * @param encodeCid   contract id encoding function
     * @tparam Nid node id type
     * @tparam Cid contract id type
     * @return protobuf encoded transaction
     */
-  private[transaction] def encodeTransactionWithCustomVersion[Nid, Cid](
+  private[transaction] def encodeTransactionWithCustomVersion[Nid](
       encodeNid: EncodeNid[Nid],
-      encodeCid: ValueCoder.EncodeCid[Cid],
-      transaction: VersionedTransaction[Nid, Cid],
+      transaction: VersionedTransaction[Nid],
   ): Either[EncodeError, TransactionOuterClass.Transaction] = {
     val builder = TransactionOuterClass.Transaction
       .newBuilder()
@@ -687,7 +649,6 @@ object TransactionCoder {
           builder <- builderOrError
           encodedNode <- encodeNode(
             encodeNid,
-            encodeCid,
             transaction.version,
             nid,
             transaction.nodes(nid),
@@ -730,43 +691,38 @@ object TransactionCoder {
     *
     * @param protoTx   protobuf encoded transaction
     * @param decodeNid node id decoding function
-    * @param decodeCid contract id decoding function
     * @tparam Nid node id type
     * @tparam Cid contract id type
     * @return decoded transaction
     */
-  def decodeTransaction[Nid, Cid](
+  def decodeTransaction[Nid](
       decodeNid: DecodeNid[Nid],
-      decodeCid: ValueCoder.DecodeCid[Cid],
       protoTx: TransactionOuterClass.Transaction,
-  ): Either[DecodeError, VersionedTransaction[Nid, Cid]] =
+  ): Either[DecodeError, VersionedTransaction[Nid]] =
     for {
       version <- decodeVersion(protoTx.getVersion)
       tx <- decodeTransaction(
         decodeNid,
-        decodeCid,
         version,
         protoTx,
       )
     } yield tx
 
-  /** Reads a [[GenTransaction[Nid, Cid]]] from protobuf. Does not check if
+  /** Reads a [[GenTransaction[Nid]]] from protobuf. Does not check if
     * [[TransactionVersion]] passed in the protobuf is currently supported, if you need this check use
     * [[TransactionCoder.decodeTransaction]].
     *
     * @param protoTx   protobuf encoded transaction
     * @param decodeNid node id decoding function
-    * @param decodeCid contract id decoding function
     * @tparam Nid node id type
     * @tparam Cid contract id type
     * @return decoded transaction
     */
-  private def decodeTransaction[Nid, Cid](
+  private def decodeTransaction[Nid](
       decodeNid: DecodeNid[Nid],
-      decodeCid: ValueCoder.DecodeCid[Cid],
       txVersion: TransactionVersion,
       protoTx: TransactionOuterClass.Transaction,
-  ): Either[DecodeError, VersionedTransaction[Nid, Cid]] = {
+  ): Either[DecodeError, VersionedTransaction[Nid]] = {
     val roots = protoTx.getRootsList.asScala
       .foldLeft[Either[DecodeError, BackStack[Nid]]](Right(BackStack.empty[Nid])) {
         case (Right(acc), s) => decodeNid.fromString(s).map(acc :+ _)
@@ -775,10 +731,10 @@ object TransactionCoder {
       .map(_.toImmArray)
 
     val nodes = protoTx.getNodesList.asScala
-      .foldLeft[Either[DecodeError, HashMap[Nid, GenNode[Nid, Cid]]]](Right(HashMap.empty)) {
+      .foldLeft[Either[DecodeError, HashMap[Nid, GenNode[Nid]]]](Right(HashMap.empty)) {
         case (Left(e), _) => Left(e)
         case (Right(acc), s) =>
-          decodeVersionedNode(decodeNid, decodeCid, txVersion, s).map(acc + _)
+          decodeVersionedNode(decodeNid, txVersion, s).map(acc + _)
       }
     for {
       rs <- roots
@@ -894,7 +850,7 @@ object TransactionCoder {
   ): Either[DecodeError, GlobalKey] =
     for {
       tmplId <- ValueCoder.decodeIdentifier(rawTmplId)
-      value <- ValueCoder.decodeValue(ValueCoder.NoCidDecoder, nodeVersion, rawKey)
+      value <- ValueCoder.decodeValue(nodeVersion, rawKey)
       key <- GlobalKey.build(tmplId, value).left.map(DecodeError)
     } yield key
 

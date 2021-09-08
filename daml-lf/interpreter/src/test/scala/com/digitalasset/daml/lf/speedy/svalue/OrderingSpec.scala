@@ -11,7 +11,7 @@ import com.daml.lf.speedy.SValue._
 import com.daml.lf.speedy.SExpr.{SEApp, SEImportValue, SELocA, SEMakeClo}
 import com.daml.lf.value.Value
 import com.daml.lf.value.test.TypedValueGenerators.genAddend
-import com.daml.lf.value.test.ValueGenerators.{cidV0Gen, comparableCoidsGen}
+import com.daml.lf.value.test.ValueGenerators.comparableCoidsGen
 import com.daml.lf.PureCompiledPackages
 import com.daml.lf.iface
 import com.daml.lf.interpretation.Error.ContractIdComparability
@@ -78,10 +78,8 @@ class OrderingSpec
 
   private val randomComparableValues: TableFor2[String, Gen[SValue]] = {
     import com.daml.lf.value.test.TypedValueGenerators.{ValueAddend => VA}
-    implicit val ordNo: Order[Nothing] =
-      Order order [Nothing] ((_: Any, _: Any) => sys.error("impossible"))
-    def r(name: String, va: VA)(sv: va.Inj[Nothing] => SValue) =
-      (name, va.injarb[Nothing].arbitrary map sv)
+    def r(name: String, va: VA)(sv: va.Inj => SValue) =
+      (name, va.injarb.arbitrary map sv)
     Table(
       ("comparable value subset", "generator"),
       Seq(
@@ -112,16 +110,14 @@ class OrderingSpec
   // The tests are here as this is difficult to test outside daml-lf/interpreter.
   "txn Value Ordering" should {
     import Value.{ContractId => Cid}
-    // SContractId V1 ordering is nontotal so arbitrary generation of them is unsafe to use
-    implicit val cidArb: Arbitrary[Cid] = Arbitrary(cidV0Gen)
     implicit val svalueOrd: Order[SValue] = Order fromScalaOrdering Ordering
     implicit val cidOrd: Order[Cid] = svalueOrd contramap SContractId
     val EmptyScope: Value.LookupVariantEnum = _ => None
 
     "match SValue Ordering" in forAll(genAddend, minSuccessful(100)) { va =>
       import va.{injarb, injshrink}
-      implicit val valueOrd: Order[Value[Cid]] = Tag unsubst Value.orderInstance[Cid](EmptyScope)
-      forAll(minSuccessful(20)) { (a: va.Inj[Cid], b: va.Inj[Cid]) =>
+      implicit val valueOrd: Order[Value] = Tag unsubst Value.orderInstance(EmptyScope)
+      forAll(minSuccessful(20)) { (a: va.Inj, b: va.Inj) =>
         import va.injord
         val ta = va.inj(a)
         val tb = va.inj(b)
@@ -181,7 +177,7 @@ class OrderingSpec
     }
   }
 
-  private def translatePrimValue(typ: iface.Type, v: Value[Value.ContractId]) = {
+  private def translatePrimValue(typ: iface.Type, v: Value) = {
     val seed = crypto.Hash.hashPrivateKey("OrderingSpec")
     val machine = Speedy.Machine.fromUpdateSExpr(
       PureCompiledPackages.Empty,

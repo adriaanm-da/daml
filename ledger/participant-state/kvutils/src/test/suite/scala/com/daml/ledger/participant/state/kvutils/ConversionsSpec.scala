@@ -23,7 +23,7 @@ import com.daml.lf.engine.Error
 import com.daml.lf.transaction.test.TransactionBuilder
 import com.daml.lf.transaction.{BlindingInfo, NodeId, TransactionOuterClass, TransactionVersion}
 import com.daml.lf.value.Value.{ContractId, ContractInst, ValueText}
-import com.daml.lf.value.ValueOuterClass
+import com.daml.lf.value.{Value, ValueOuterClass}
 import io.grpc.Status.Code
 import org.scalatest.OptionValues
 import org.scalatest.matchers.should.Matchers
@@ -380,7 +380,7 @@ class ConversionsSpec extends AnyWordSpec with Matchers with OptionValues {
 
   private def lfContractInstance(discriminator: String) =
     TransactionBuilder(TransactionVersion.VDev).versionContract(
-      ContractInst(
+      ContractInst[Value](
         Ref.Identifier.assertFromString("some:template:name"),
         ValueText(discriminator),
         "",

@@ -10,8 +10,7 @@ import Ref.{Identifier, Name}
 import com.daml.lf.transaction.TransactionVersion
 import test.ValueGenerators.{coidGen, idGen, nameGen}
 import test.TypedValueGenerators.{RNil, genAddend, ValueAddend => VA}
-import com.daml.scalatest.Unnatural
-import org.scalacheck.{Arbitrary, Gen, Shrink}
+import org.scalacheck.{Arbitrary, Gen}
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.freespec.AnyFreeSpec
@@ -40,7 +39,7 @@ class ValueSpec
     "does not bump version when" - {
 
       "ensureNoCid is used " in {
-        val value = VersionedValue[ContractId](TransactionVersion.minVersion, ValueUnit)
+        val value = VersionedValue(TransactionVersion.minVersion, ValueUnit)
         val contract = ContractInst(tmplId, value, "agreed")
         value.ensureNoCid.map(_.version) shouldBe Right(TransactionVersion.minVersion)
         contract.ensureNoCid.map(_.arg.version) shouldBe Right(TransactionVersion.minVersion)
@@ -73,9 +72,9 @@ class ValueSpec
   "Equal" - {
     import com.daml.lf.value.test.ValueGenerators._
     import org.scalacheck.Arbitrary
-    type T = VersionedValue[Unnatural[ContractId]]
+    type T = VersionedValue
     implicit val arbT: Arbitrary[T] =
-      Arbitrary(versionedValueGen.map(VersionedValue.map1(Unnatural(_))))
+      Arbitrary(versionedValueGen)
 
     "obeys Equal laws" in checkLaws(SzP.equal.laws[T])
 
@@ -98,20 +97,19 @@ class ValueSpec
       check(p, minSuccessful(20))
     }
 
-  private def checkOrderPreserved[Cid: Arbitrary: Shrink: Order](
+  private def checkOrderPreserved(
       va: VA,
       scope: Value.LookupVariantEnum,
   ) = {
     import va.{injord, injarb, injshrink}
-    implicit val targetOrd: Order[Value[Cid]] = Tag unsubst Value.orderInstance(scope)
-    forAll(minSuccessful(20)) { (a: va.Inj[Cid], b: va.Inj[Cid]) =>
+    implicit val targetOrd: Order[Value] = Tag unsubst Value.orderInstance(scope)
+    forAll(minSuccessful(20)) { (a: va.Inj, b: va.Inj) =>
       (a ?|? b) should ===(va.inj(a) ?|? va.inj(b))
     }
   }
 
   "Order" - {
-    type Cid = Int
-    type T = Value[Cid]
+    type T = Value
 
     val FooScope: Value.LookupVariantEnum =
       Map(fooVariantId -> ImmArray("quux", "baz"), fooEnumId -> ImmArray("quux", "baz"))
@@ -123,27 +121,27 @@ class ValueSpec
       implicit val ord: Order[T] = Tag unsubst Value.orderInstance(EmptyScope)
 
       "obeys order laws" in forAll(genAddend, minSuccessful(100)) { va =>
-        implicit val arb: Arbitrary[T] = va.injarb[Cid] map (va.inj(_))
+        implicit val arb: Arbitrary[T] = va.injarb map (va.inj(_))
         checkLaws(SzP.order.laws[T])
       }
     }
 
     "for record and variant types" - {
       implicit val ord: Order[T] = Tag unsubst Value.orderInstance(FooScope)
-      "obeys order laws" in forEvery(Table("va", fooRecord, fooVariant)) { va =>
-        implicit val arb: Arbitrary[T] = va.injarb[Cid] map (va.inj(_))
+      "obeys order laws" in forEvery(Table[VA]("va", fooRecord, fooVariant)) { va =>
+        implicit val arb: Arbitrary[T] = va.injarb map (va.inj(_))
         checkLaws(SzP.order.laws[T])
       }
 
       "matches constructor rank" in {
-        val fooCp = shapeless.Coproduct[fooVariant.Inj[Cid]]
+        val fooCp = shapeless.Coproduct[fooVariant.Inj]
         val quux = fooCp(Symbol("quux") ->> 42L)
         val baz = fooCp(Symbol("baz") ->> 42L)
         (fooVariant.inj(quux) ?|? fooVariant.inj(baz)) shouldBe scalaz.Ordering.LT
       }
 
-      "preserves base order" in forEvery(Table("va", fooRecord, fooVariant)) { va =>
-        checkOrderPreserved[Cid](va, FooScope)
+      "preserves base order" in forEvery(Table[VA]("va", fooRecord, fooVariant)) { va =>
+        checkOrderPreserved(va, FooScope)
       }
     }
 
@@ -151,8 +149,8 @@ class ValueSpec
       "obeys order laws" in forAll(enumDetailsAndScopeGen, minSuccessful(20)) {
         case (details, scope) =>
           implicit val ord: Order[T] = Tag unsubst Value.orderInstance(scope)
-          forEvery(Table("va", details.values.toSeq: _*)) { ea =>
-            implicit val arb: Arbitrary[T] = ea.injarb[Cid] map (ea.inj(_))
+          forEvery(Table[VA]("va", details.values.toSeq: _*)) { ea =>
+            implicit val arb: Arbitrary[T] = ea.injarb map (ea.inj(_))
             checkLaws(SzP.order.laws[T])
           }
       }
@@ -161,7 +159,7 @@ class ValueSpec
         case (details, scope) =>
           implicit val ord: Order[T] = Tag unsubst Value.orderInstance(scope)
           forEvery(Table("va", details.values.toSeq: _*)) { ea =>
-            implicit val arb: Arbitrary[T] = ea.injarb[Cid] map (ea.inj(_))
+            implicit val arb: Arbitrary[T] = ea.injarb map (ea.inj(_))
             forAll(minSuccessful(20)) { (a: T, b: T) =>
               inside((a, b)) { case (ValueEnum(_, ac), ValueEnum(_, bc)) =>
                 (a ?|? b) should ===((ea.values indexOf ac) ?|? (ea.values indexOf bc))
@@ -172,8 +170,8 @@ class ValueSpec
 
       "preserves base order" in forAll(enumDetailsAndScopeGen, minSuccessful(20)) {
         case (details, scope) =>
-          forEvery(Table("va", details.values.toSeq: _*)) { ea =>
-            checkOrderPreserved[Cid](ea, scope)
+          forEvery(Table[VA]("va", details.values.toSeq: _*)) { ea =>
+            checkOrderPreserved(ea, scope)
           }
       }
     }
