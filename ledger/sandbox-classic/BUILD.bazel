@@ -424,13 +424,27 @@ server_conformance_test(
 )
 
 # By default, all conformance tests use the append-only schema.
-# The deprecated mutating schema is only tested using a single conformance test.
-# TODO append-only: remove this test after removing the mutating schema
+# The deprecated mutating schema is only tested using single conformance tests.
+# TODO append-only: remove these tests after removing the mutating schema
 server_conformance_test(
     name = "conformance-test-static-time-mutating",
     lf_versions = ["default"],
     server_args = [
         "--static-time",
+        "--contract-id-seeding=testing-weak",
+    ],
+    servers = SERVERS,
+    test_tool_args = [
+        "--open-world",
+        "--exclude=ClosedWorldIT",
+    ],
+)
+
+server_conformance_test(
+    name = "conformance-test-wall-clock-mutating",
+    lf_versions = ["default"],
+    server_args = [
+        "--wall-clock-time",
         "--contract-id-seeding=testing-weak",
     ],
     servers = SERVERS,
