@@ -447,11 +447,15 @@ private[state] object Conversions {
   def decodeTransactionRejectionEntry(
       entry: DamlTransactionRejectionEntry
   ): Option[FinalReason] = {
-    def buildStatus(code: Code, message: String, metadata: Map[String, String]) = {
+    def buildStatus(code: Code, message: String, definiteAnswer: Boolean) = {
       Status.of(
         code.value,
         message,
-        Seq(AnyProto.pack[ErrorInfo](ErrorInfo(metadata = metadata))),
+        Seq(
+          AnyProto.pack[ErrorInfo](
+            ErrorInfo(metadata = Map(GrpcStatuses.DefiniteAnswerKey -> definiteAnswer.toString))
+          )
+        ),
       )
     }
 
@@ -462,7 +466,7 @@ private[state] object Conversions {
           buildStatus(
             Code.ABORTED,
             s"Invalid ledger time: ${rejection.getDetails}",
-            Map(GrpcStatuses.DefiniteAnswerKey -> "false"),
+            definiteAnswer = false,
           )
         )
       case DamlTransactionRejectionEntry.ReasonCase.DISPUTED =>
@@ -471,7 +475,7 @@ private[state] object Conversions {
           buildStatus(
             Code.INVALID_ARGUMENT,
             s"Disputed: ${rejection.getDetails}",
-            Map(GrpcStatuses.DefiniteAnswerKey -> "true"),
+            definiteAnswer = false,
           )
         )
       case DamlTransactionRejectionEntry.ReasonCase.SUBMITTER_CANNOT_ACT_VIA_PARTICIPANT =>
@@ -480,7 +484,7 @@ private[state] object Conversions {
           buildStatus(
             Code.PERMISSION_DENIED,
             s"Submitter cannot act via participant: ${rejection.getDetails}",
-            Map(GrpcStatuses.DefiniteAnswerKey -> "false"),
+            definiteAnswer = false,
           )
         )
       case DamlTransactionRejectionEntry.ReasonCase.INCONSISTENT =>
@@ -489,7 +493,7 @@ private[state] object Conversions {
           buildStatus(
             Code.ABORTED,
             s"Inconsistent: ${rejection.getDetails}",
-            Map(GrpcStatuses.DefiniteAnswerKey -> "false"),
+            definiteAnswer = false,
           )
         )
       case DamlTransactionRejectionEntry.ReasonCase.RESOURCES_EXHAUSTED =>
@@ -498,7 +502,7 @@ private[state] object Conversions {
           buildStatus(
             Code.ABORTED,
             s"Resources exhausted: ${rejection.getDetails}",
-            Map(GrpcStatuses.DefiniteAnswerKey -> "false"),
+            definiteAnswer = false,
           )
         )
       case DamlTransactionRejectionEntry.ReasonCase.DUPLICATE_COMMAND =>
@@ -506,7 +510,7 @@ private[state] object Conversions {
           buildStatus(
             Code.ALREADY_EXISTS,
             "Duplicate commands",
-            Map(GrpcStatuses.DefiniteAnswerKey -> "true"),
+            definiteAnswer = true,
           )
         )
       case DamlTransactionRejectionEntry.ReasonCase.PARTY_NOT_KNOWN_ON_LEDGER =>
@@ -515,7 +519,7 @@ private[state] object Conversions {
           buildStatus(
             Code.INVALID_ARGUMENT,
             s"Party not known on ledger: ${rejection.getDetails}",
-            Map(GrpcStatuses.DefiniteAnswerKey -> "false"),
+            definiteAnswer = false,
           )
         )
       case DamlTransactionRejectionEntry.ReasonCase.VALIDATION_FAILURE =>
@@ -524,7 +528,7 @@ private[state] object Conversions {
           buildStatus(
             Code.INVALID_ARGUMENT,
             s"Disputed: ${rejection.getDetails}",
-            Map(GrpcStatuses.DefiniteAnswerKey -> "true"),
+            definiteAnswer = false,
           )
         )
       case DamlTransactionRejectionEntry.ReasonCase.INTERNALLY_DUPLICATE_KEYS =>
@@ -532,7 +536,7 @@ private[state] object Conversions {
           buildStatus(
             Code.INVALID_ARGUMENT,
             s"Disputed: ${InternallyInconsistentTransaction.DuplicateKeys.description}",
-            Map(GrpcStatuses.DefiniteAnswerKey -> "true"),
+            definiteAnswer = false,
           )
         )
       case DamlTransactionRejectionEntry.ReasonCase.INTERNALLY_INCONSISTENT_KEYS =>
@@ -540,7 +544,7 @@ private[state] object Conversions {
           buildStatus(
             Code.INVALID_ARGUMENT,
             s"Disputed: ${InternallyInconsistentTransaction.InconsistentKeys.description}",
-            Map(GrpcStatuses.DefiniteAnswerKey -> "true"),
+            definiteAnswer = false,
           )
         )
       case DamlTransactionRejectionEntry.ReasonCase.EXTERNALLY_INCONSISTENT_CONTRACTS =>
@@ -548,7 +552,7 @@ private[state] object Conversions {
           buildStatus(
             Code.ABORTED,
             s"Inconsistent: ${ExternallyInconsistentTransaction.InconsistentContracts.description}",
-            Map(GrpcStatuses.DefiniteAnswerKey -> "false"),
+            definiteAnswer = false,
           )
         )
       case DamlTransactionRejectionEntry.ReasonCase.EXTERNALLY_DUPLICATE_KEYS =>
@@ -556,7 +560,7 @@ private[state] object Conversions {
           buildStatus(
             Code.ABORTED,
             s"Inconsistent: ${ExternallyInconsistentTransaction.DuplicateKeys.description}",
-            Map(GrpcStatuses.DefiniteAnswerKey -> "false"),
+            definiteAnswer = false,
           )
         )
       case DamlTransactionRejectionEntry.ReasonCase.EXTERNALLY_INCONSISTENT_KEYS =>
@@ -564,7 +568,7 @@ private[state] object Conversions {
           buildStatus(
             Code.ABORTED,
             s"Inconsistent: ${ExternallyInconsistentTransaction.InconsistentKeys.description}",
-            Map(GrpcStatuses.DefiniteAnswerKey -> "false"),
+            definiteAnswer = false,
           )
         )
       case DamlTransactionRejectionEntry.ReasonCase.MISSING_INPUT_STATE =>
@@ -573,7 +577,7 @@ private[state] object Conversions {
           buildStatus(
             Code.ABORTED,
             s"Inconsistent: Missing input state for key ${rejection.getKey.toString}",
-            Map(GrpcStatuses.DefiniteAnswerKey -> "false"),
+            definiteAnswer = false,
           )
         )
       case DamlTransactionRejectionEntry.ReasonCase.RECORD_TIME_OUT_OF_RANGE =>
@@ -582,7 +586,7 @@ private[state] object Conversions {
           buildStatus(
             Code.ABORTED,
             s"Invalid ledger time: Record time is outside of valid range [${rejection.getMinimumRecordTime}, ${rejection.getMaximumRecordTime}]",
-            Map(GrpcStatuses.DefiniteAnswerKey -> "false"),
+            definiteAnswer = false,
           )
         )
       case DamlTransactionRejectionEntry.ReasonCase.CAUSAL_MONOTONICITY_VIOLATED =>
@@ -590,7 +594,7 @@ private[state] object Conversions {
           buildStatus(
             Code.ABORTED,
             "Invalid ledger time: Causal monotonicity violated",
-            Map(GrpcStatuses.DefiniteAnswerKey -> "false"),
+            definiteAnswer = false,
           )
         )
       case DamlTransactionRejectionEntry.ReasonCase.SUBMITTING_PARTY_NOT_KNOWN_ON_LEDGER =>
@@ -599,7 +603,7 @@ private[state] object Conversions {
           buildStatus(
             Code.INVALID_ARGUMENT,
             s"Party not known on ledger: Submitting party '${rejection.getSubmitterParty}' not known",
-            Map(GrpcStatuses.DefiniteAnswerKey -> "false"),
+            definiteAnswer = false,
           )
         )
       case DamlTransactionRejectionEntry.ReasonCase.PARTIES_NOT_KNOWN_ON_LEDGER =>
@@ -609,7 +613,7 @@ private[state] object Conversions {
             Code.INVALID_ARGUMENT,
             s"Party not known on ledger: Parties not known on ledger ${rejection.getPartiesList.asScala
               .mkString("[", ",", "]")}",
-            Map(GrpcStatuses.DefiniteAnswerKey -> "false"),
+            definiteAnswer = false,
           )
         )
       case DamlTransactionRejectionEntry.ReasonCase.INVALID_PARTICIPANT_STATE =>
@@ -618,7 +622,7 @@ private[state] object Conversions {
           buildStatus(
             Code.INVALID_ARGUMENT,
             s"Disputed: ${rejection.getDetails}",
-            Map(GrpcStatuses.DefiniteAnswerKey -> "false"),
+            definiteAnswer = false,
           )
         )
       case DamlTransactionRejectionEntry.ReasonCase.REASON_NOT_SET =>
@@ -626,7 +630,7 @@ private[state] object Conversions {
           buildStatus(
             Code.UNKNOWN,
             "No reason set for rejection",
-            Map(GrpcStatuses.DefiniteAnswerKey -> "false"),
+            definiteAnswer = false,
           )
         )
     }

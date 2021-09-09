@@ -109,17 +109,17 @@ class ConversionsSpec extends AnyWordSpec with Matchers with OptionValues {
             (
               Rejection.ValidationFailure(Error.Package(Error.Package.Internal("ERROR", "ERROR"))),
               Code.INVALID_ARGUMENT,
-              true,
+              false,
             ),
             (
               Rejection.InternallyInconsistentTransaction.InconsistentKeys,
               Code.INVALID_ARGUMENT,
-              true,
+              false,
             ),
             (
               Rejection.InternallyInconsistentTransaction.DuplicateKeys,
               Code.INVALID_ARGUMENT,
-              true,
+              false,
             ),
             (
               Rejection.ExternallyInconsistentTransaction.InconsistentContracts,
@@ -215,7 +215,7 @@ class ConversionsSpec extends AnyWordSpec with Matchers with OptionValues {
                   builder
                     .setDisputed(Disputed.newBuilder()),
                 Code.INVALID_ARGUMENT,
-                true,
+                false,
               ),
               (
                 (builder: DamlTransactionRejectionEntry.Builder) =>
