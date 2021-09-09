@@ -394,6 +394,8 @@ server_conformance_test(
     ],
 )
 
+# This test asserts that the Daml engine is configured correctly for the sandbox classic executable.
+# It does not depend on the ledger backend, that's why it runs on a single server.
 server_conformance_test(
     name = "conformance-test-contract-ids",
     server_args = [
