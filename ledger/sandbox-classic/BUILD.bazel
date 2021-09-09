@@ -341,6 +341,7 @@ server_conformance_test(
     server_args = [
         "--static-time",
         "--contract-id-seeding=testing-weak",
+        "--enable-append-only-schema",
     ],
     servers = SERVERS,
     test_tool_args = [
@@ -368,7 +369,7 @@ server_conformance_test(
 )
 
 server_conformance_test(
-    name = "conformance-test-pruning-append-only",
+    name = "conformance-test-pruning",
     lf_versions = [
         "default",
     ],
@@ -391,6 +392,7 @@ server_conformance_test(
     server_args = [
         "--wall-clock-time",
         "--contract-id-seeding=testing-weak",
+        "--enable-append-only-schema",
     ],
     servers = SERVERS,
     test_tool_args = [
@@ -420,6 +422,7 @@ server_conformance_test(
     server_args = [
         "--wall-clock-time",
         "--contract-id-seeding=no",
+        "--enable-append-only-schema",
     ],
     servers = SERVERS,
     test_tool_args = [
@@ -430,7 +433,10 @@ server_conformance_test(
 
 server_conformance_test(
     name = "conformance-test-contract-ids",
-    server_args = ["--contract-id-seeding=testing-weak"],
+    server_args = [
+        "--contract-id-seeding=testing-weak",
+        "--enable-append-only-schema",
+    ],
     servers = {"memory": SERVERS["memory"]},
     test_tool_args = [
         "--verbose",
@@ -439,7 +445,7 @@ server_conformance_test(
 )
 
 server_conformance_test(
-    name = "conformance-test-append-only-command-completion-dedup-info",
+    name = "conformance-test-command-completion-dedup-info",
     server_args = [
         "--wall-clock-time",
         "--contract-id-seeding=testing-weak",
@@ -451,5 +457,22 @@ server_conformance_test(
         "--include=" +
         "AppendOnlyCompletionDeduplicationInfoITCommandService" +
         ",AppendOnlyCompletionDeduplicationInfoITCommandSubmissionService",
+    ],
+)
+
+# By default, all conformance tests use the append-only schema.
+# The deprecated mutating schema is only tested using a single conformance test.
+# TODO append-only: remove this test after removing the mutating schema
+server_conformance_test(
+    name = "conformance-test-static-time-mutating",
+    lf_versions = ["default"],
+    server_args = [
+        "--static-time",
+        "--contract-id-seeding=testing-weak",
+    ],
+    servers = SERVERS,
+    test_tool_args = [
+        "--open-world",
+        "--exclude=ClosedWorldIT",
     ],
 )
