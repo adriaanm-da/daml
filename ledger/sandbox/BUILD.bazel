@@ -281,6 +281,7 @@ server_conformance_test(
     ],
     server_args = [
         "--static-time",
+        "--enable-append-only-schema",
     ],
     servers = NEXT_SERVERS,
     test_tool_args = [
@@ -294,6 +295,7 @@ server_conformance_test(
     name = "next-conformance-test-wall-clock",
     server_args = [
         "--wall-clock-time",
+        "--enable-append-only-schema",
     ],
     servers = NEXT_SERVERS,
     test_tool_args = [
@@ -308,6 +310,7 @@ server_conformance_test(
     server_args = [
         "--wall-clock-time",
         "--implicit-party-allocation=false",
+        "--enable-append-only-schema",
     ],
     servers = NEXT_SERVERS,
     test_tool_args = [
@@ -318,6 +321,9 @@ server_conformance_test(
 
 server_conformance_test(
     name = "next-conformance-test-contract-ids",
+    server_args = [
+        "--enable-append-only-schema",
+    ],
     servers = {"memory": NEXT_SERVERS["memory"]},
     test_tool_args = [
         "--verbose",
@@ -355,8 +361,24 @@ server_conformance_test(
 
 server_conformance_test(
     name = "next-conformance-test-command-deduplication",
+    server_args = [
+        "--enable-append-only-schema",
+    ],
     servers = NEXT_SERVERS,
     test_tool_args = [
         "--include=KVCommandDeduplicationIT",
+    ],
+)
+
+# By default, all conformance tests use the append-only schema.
+# The deprecated mutating schema is only tested using a single conformance test.
+# TODO append-only: remove this test after removing the mutating schema
+server_conformance_test(
+    name = "next-conformance-test-mutating",
+    servers = NEXT_SERVERS,
+    test_tool_args = [
+        "--open-world",
+        "--exclude=ClosedWorldIT" +
+        ",CommandDeduplicationIT",  # It's a KV ledger so it needs the KV variant
     ],
 )
