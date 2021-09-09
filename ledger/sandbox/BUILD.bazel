@@ -346,11 +346,11 @@ server_conformance_test(
 )
 
 server_conformance_test(
-    name = "next-conformance-test-append-only-command-completion-dedup-info",
+    name = "next-conformance-test-command-completion-dedup-info",
     server_args = [
         "--enable-append-only-schema",
     ],
-    servers = {"postgresql": NEXT_SERVERS["postgresql"]},
+    servers = NEXT_SERVERS,
     test_tool_args = [
         "--open-world",
         "--include=" +
