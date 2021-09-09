@@ -350,24 +350,6 @@ server_conformance_test(
     ],
 )
 
-# TODO append-only: only for temporary testing
-server_conformance_test(
-    name = "conformance-test-static-time-append-only",
-    lf_versions = [
-        "default",
-    ],
-    server_args = [
-        "--static-time",
-        "--contract-id-seeding=testing-weak",
-        "--enable-append-only-schema",
-    ],
-    servers = ONLY_POSTGRES_SERVER,
-    test_tool_args = [
-        "--open-world",
-        "--exclude=ClosedWorldIT",
-    ],
-)
-
 server_conformance_test(
     name = "conformance-test-pruning",
     lf_versions = [
@@ -395,21 +377,6 @@ server_conformance_test(
         "--enable-append-only-schema",
     ],
     servers = SERVERS,
-    test_tool_args = [
-        "--open-world",
-        "--exclude=ClosedWorldIT",
-    ],
-)
-
-# TODO append-only: only for temporary testing
-server_conformance_test(
-    name = "conformance-test-wall-clock-append-only",
-    server_args = [
-        "--wall-clock-time",
-        "--contract-id-seeding=testing-weak",
-        "--enable-append-only-schema",
-    ],
-    servers = ONLY_POSTGRES_SERVER,
     test_tool_args = [
         "--open-world",
         "--exclude=ClosedWorldIT",
