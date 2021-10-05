@@ -9,8 +9,8 @@ Daml-LF Transaction Specification
 
 This specification, in concert with the ``transaction.proto``
 machine-readable definition, defines a format for *Daml-LF
-transactions*, to be used when inspecting ledger activity as a st
-ream, or submitting changes to the ledger.
+transactions*, to be used when inspecting ledger activity as a stream, 
+or submitting changes to the ledger.
 
 A *ledger* can be viewed as a sequence of these transactions.
 
@@ -48,7 +48,7 @@ of this document, is not a valid Daml-LF transaction.
 Backward compatibility
 ^^^^^^^^^^^^^^^^^^^^^^
 
-Daml-LF transaction nodes, and transactions are encoded according a
+Daml-LF transaction nodes, and transactions are encoded according to a
 common versioning scheme, called the *transaction version scheme*.
 Each version of this scheme, called a transaction version, is
 associated to a language version.

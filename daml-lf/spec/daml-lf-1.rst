@@ -95,7 +95,7 @@ version. In addition, we will mark lines within inference rules with
 annotations of the form ``[Daml-LF < x.y]`` and ``[Daml-LF ≥ x.y]`` to
 make the respective line conditional upon the Daml-LF version.
 
-A *preview* version is an snapshot of the next 1.x version to be
+A *preview* version is a snapshot of the next 1.x version to be
 released. It is provided for beta testing purpose and may only be
 changed to include bug fixes.  On the other hand, the *development*
 version is a special staging area for the development of upcoming
@@ -1877,7 +1877,7 @@ collisions:
 * A package contains a module ``A.B`` that defines the type ``C``
   together with a module ``A`` that defines the type ``B.C``.
 
-Note that templates do not have names, and therefore can not cause
+Note that templates do not have names, and therefore cannot cause
 collisions. Note also that value references are not concerned with
 collisions as defined here.
 
@@ -4969,7 +4969,7 @@ version 1 can be found in the `daml_lf_1.proto
 <../archive/src/main/protobuf/com/daml/daml_lf_dev/daml_lf_1.proto>`_
 file.
 
-For the sake of brevity, we do no exhaustively describe how Daml-LF
+For the sake of brevity, we do not exhaustively describe how Daml-LF
 programs are (un)serialized into protocol buffer. In the rest of this
 section, we describe the particularities of the encoding and how
 Daml-LF version impacts it.
