@@ -52,10 +52,38 @@ lazy val `resources-akka` = project
 lazy val `resources-grpc` = project
 lazy val `scala-utils` = project.settings(
     libraryDependencies ++= Seq(Deps.org_scalaz_scalaz_core, Deps.org_scala_lang_modules_scala_collection_compat),
-    unmanagedSourceDirectories in Compile += (baseDirectory( _ / "src/main/2.13" )).value,
-    addCompilerPlugin("org.typelevel" % "kind-projector" % "0.13.2" cross CrossVersion.full)
+    Compile / unmanagedSourceDirectories += (baseDirectory( _ / "src/main/2.13" )).value,
+    addCompilerPlugin(Deps.org_typelevel_kind_projector)
 )
 
-lazy val `scalatest-utils` = project
+lazy val `scalatest-utils` = project.settings(
+    libraryDependencies ++= Seq(
+      Deps.org_scalacheck_scalacheck,
+      Deps.org_scalactic_scalactic,
+      Deps.org_scalatest_scalatest_core,
+      Deps.org_scalatest_scalatest_flatspec,
+      Deps.org_scalatest_scalatest_matchers_core,
+      Deps.org_scalatest_scalatest_shouldmatchers,
+      Deps.org_scalatest_scalatest_wordspec,
+      Deps.org_scalatestplus_scalacheck_1_15,
+      Deps.org_scalaz_scalaz_core,
+      Deps.org_scalatest_scalatest_compatible),
+    //     scalacopts = lf_scalacopts,
+
+    addCompilerPlugin(Deps.org_typelevel_kind_projector)
+)
+// da_scala_test(
+//     name = "test",
+//     size = "small",
+//     srcs = glob(["src/test/**/*.scala"]),
+//     scala_deps = [
+//         "@maven//:org_scalaz_scalaz_core",
+//     ],
+//     scalacopts = lf_scalacopts,
+//     deps = [
+//         ":scalatest-utils",
+//     ],
+// )
+
 lazy val `target` = project
 lazy val `timer-utils` = project

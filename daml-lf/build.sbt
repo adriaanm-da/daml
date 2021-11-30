@@ -2,6 +2,7 @@ lazy val root = RootProject(file("../"))
 lazy val nameof = ProjectRef(file("./"), "nameof")
 lazy val `scala-utils` = ProjectRef(file("./"), "scala-utils")
 lazy val `logging-entries` = ProjectRef(file("./"), "logging-entries")
+lazy val `scalatest-utils` = ProjectRef(file("./"), "scalatest-utils")
 
 lazy val `daml-lf` = project.aggregate(
   interpreter, transaction, interface, language, 
@@ -9,97 +10,128 @@ lazy val `daml-lf` = project.aggregate(
   `scenario-interpreter`, data, parser, engine, validation, repl,
   `archive-reader`, `archive-encoder`, encoder)
 
-lazy val interpreter = project
+lazy val data = project
   .settings(
-    name := "daml-lf-interpreter",
-    //     scalacopts = lf_scalacopts_stricter,
-    libraryDependencies ++= Seq(
-		Deps.io_spray_spray_json,
-        Deps.org_scala_lang_modules_scala_collection_compat,
+    // other settings
+    name := "daml-lf-data",
+    libraryDependencies ++= List(
         Deps.org_scalaz_scalaz_core,
-        Deps.org_typelevel_paiges_core,
+        Deps.com_google_guava_guava,
         Deps.com_google_protobuf_protobuf_java,
-        Deps.org_slf4j_slf4j_api)
+        Deps.org_slf4j_slf4j_api),
+
+    libraryDependencies ++= List(
+        Deps.org_scalacheck_scalacheck,
+        Deps.org_scalatestplus_scalacheck_1_15,
+        Deps.org_scalaz_scalaz_scalacheck_binding,
+        Deps.org_scalatest_scalatest_freespec,
+        Deps.org_scalatest_scalatest_propspec).map(_ % "test"),
+
+// equivalent to `data-scalacheck` % "test" // https://github.com/sbt/sbt/issues/2698
+    Test / unmanagedClasspath ++= (LocalProject("data-scalacheck") / Compile / fullClasspath).value,
+
+    addCompilerPlugin(Deps.org_typelevel_kind_projector),
+
+// for test scope:
+//         silencer_plugin,
+//     scalacopts = lf_scalacopts_stricter + [
+//         "-P:silencer:lineContentFilters=import ImmArraySeq.Implicits._",
+//     ],
+
+  ).dependsOn(`logging-entries`,
+              `scala-utils`,
+//              `data-scalacheck` % "test", 
+              `scalatest-utils` % "test")
+
+
+lazy val `data-scalacheck` = project
+  .settings(
+    name := "daml-lf-data-scalacheck",
+//     scalacopts = lf_scalacopts_stricter,
+    addCompilerPlugin(Deps.org_typelevel_kind_projector),
+    libraryDependencies ++= Seq (
+        Deps.org_scalacheck_scalacheck,
+        Deps.org_scalaz_scalaz_core)
+  ).dependsOn(ProjectRef(file("./"), "data") % "compile")
+
+
+lazy val language = project
+  .settings(
+    name := "daml-lf-language",
+//     scalacopts = lf_scalacopts_stricter,
+    libraryDependencies ++= Seq (
+        Deps.org_scalaz_scalaz_core),
+
+    libraryDependencies ++= List(
+        Deps.org_scalatest_scalatest_shouldmatchers,
+        Deps.org_scalatest_scalatest_wordspec).map(_ % "test"),
+
+// for test scope:
+//     plugins = [ silencer_plugin,     ],
+//     scalacopts = lf_scalacopts + [
+//         "-P:silencer:lineContentFilters=signum",
+//     ],
+
+  ).dependsOn(
+        data,
+        nameof)
+
+lazy val parser = project
+  .settings(
+    // other settings
+    name := "daml-lf-parser",
+//         silencer_plugin,
+//     scalacopts = lf_scalacopts_stricter + [
+//         "-P:silencer:lineContentFilters=standardInterpolator",
+    libraryDependencies ++= List(
+        Deps.org_scala_lang_modules_scala_parser_combinators,
+        Deps.org_scalaz_scalaz_core),
+
+    libraryDependencies ++= List(
+        Deps.org_scalatest_scalatest_shouldmatchers,
+        Deps.org_scalatest_scalatest_wordspec,
+        Deps.org_scalacheck_scalacheck,
+        Deps.org_scalatestplus_scalacheck_1_15).map(_ % "test"),
   ).dependsOn(data,
-              language,
-              transaction,
-              validation,
-              nameof,
-              `scala-utils`)
+              language)
 
 //     visibility = [
-//         "//compiler/repl-service:__subpackages__",
-//         "//compiler/scenario-service:__subpackages__",
+//         "//daml-lf:__subpackages__",
+//         "//ledger:__subpackages__",
+
+
+
+lazy val interface = project
+  .settings(
+    name := "daml-lf-interface",
+//         silencer_plugin,
+//     scalacopts = lf_scalacopts_stricter,
+    libraryDependencies ++= Seq(
+        Deps.org_scala_lang_modules_scala_collection_compat,
+        Deps.org_scalaz_scalaz_core,
+        Deps.com_google_protobuf_protobuf_java),
+
+    libraryDependencies ++= List(
+        Deps.org_scalatest_scalatest_shouldmatchers,
+        Deps.org_scalatest_scalatest_wordspec).map(_ % "test"),
+
+  ).dependsOn(
+           `archive-reader`,
+//         "//daml-lf/archive:daml_lf_dev_archive_proto_java",
+              data,
+              language,
+              parser % "test")
+
+//     visibility = [
+//         "//daml-assistant/daml-sdk:__subpackages__",
 //         "//daml-lf:__subpackages__",
 //         "//daml-script:__subpackages__",
 //         "//extractor:__subpackages__",
-//         "//ledger:__subpackages__",
-//         "//triggers:__subpackages__",
+//         "//language-support:__subpackages__",
+//         "//ledger-service:__subpackages__",
+//         "//navigator:__subpackages__",
+//     ],
 
-// bigNumericTests = "src/test/scala/com/digitalasset/daml/lf/speedy/SBuiltinBigNumericTest.scala"
-
-// da_scala_test_suite(
-//     name = "tests",
-//     size = "small",
-//     srcs = glob(
-//         ["src/test/**/*.scala"],
-//         exclude = [bigNumericTests],
-//     ),
-//     scala_deps = [
-//         "Deps.org_scala_lang_modules_scala_collection_compat",
-//         "Deps.org_scalacheck_scalacheck",
-//         "Deps.org_scalatest_scalatest_core",
-//         "Deps.org_scalatest_scalatest_matchers_core",
-//         "Deps.org_scalatest_scalatest_shouldmatchers",
-//         "Deps.org_scalatest_scalatest_wordspec",
-//         "Deps.org_scalatestplus_scalacheck_1_15",
-//         "Deps.org_scalaz_scalaz_core",
-//         "Deps.org_scalaz_scalaz_scalacheck_binding",
-//         "Deps.org_typelevel_paiges_core",
-//     ],
-//     scalacopts = lf_scalacopts,
-//     deps = [
-//         ":interpreter",
-//         "//daml-lf/data",
-//         "//daml-lf/interface",
-//         "//daml-lf/language",
-//         "//daml-lf/parser",
-//         "//daml-lf/transaction",
-//         "//daml-lf/transaction-test-lib",
-//         "//daml-lf/validation",
-//         "//libs-scala/logging-entries",
-//         "Deps.com_google_protobuf_protobuf_java",
-//         "Deps.org_scalatest_scalatest_compatible",
-//         "Deps.org_slf4j_slf4j_api",
-//     ],
-// )
-
-// da_scala_test(
-//     name = "test_bignumeric",
-//     srcs = [bigNumericTests],
-//     scala_deps = [
-//         "Deps.org_scalatest_scalatest_core",
-//         "Deps.org_scalatest_scalatest_freespec",
-//         "Deps.org_scalatest_scalatest_matchers_core",
-//         "Deps.org_scalatest_scalatest_shouldmatchers",
-//         "Deps.org_scalaz_scalaz_core",
-//     ],
-//     scalacopts = lf_scalacopts,
-//     deps = [
-//         ":interpreter",
-//         "//daml-lf/data",
-//         "//daml-lf/language",
-//         "//daml-lf/parser",
-//         "Deps.org_scalatest_scalatest_compatible",
-//     ],
-// )
-
-// scala_repl(
-//     name = "interpreter@repl",
-//     deps = [
-//         ":interpreter",
-//     ],
-// )
 
 // Transaction library providing a high-level scala transaction
 // data structure and associated utilities.
@@ -129,17 +161,33 @@ lazy val transaction = project
 
     // TODO: this compiles, but I'm not sure what the bazel plugin was actually doing...
     Compile / PB.targets := Seq(
-        PB.gens.java  -> (Compile / sourceManaged).value)
+        PB.gens.java  -> (Compile / sourceManaged).value),
 
+    // test scope
+    //     size = "medium",
+    // TODO: ??? exclude "src/test/**/validation/*.scala" from main tests,
+    // and bring it back as a separate test with restricted dependencies:
+    //         "//daml-lf/data",
+    //         "//daml-lf/language"
+  
+    libraryDependencies ++= List(
+        Deps.org_scalatest_scalatest_shouldmatchers,
+        Deps.org_scalatest_scalatest_freespec,
+        Deps.org_scalatest_scalatest_wordspec).map(_ % "test"),
+
+    // equivalent to `transaction-test-lib` % "test" // https://github.com/sbt/sbt/issues/2698
+    Test / unmanagedClasspath ++= (LocalProject("transaction-test-lib") / Compile / fullClasspath).value,
   ).dependsOn(data,
               language,
               nameof,
-              `scala-utils`
+              `scala-utils`,
 //         ":transaction_proto_java",
 //         ":value_proto_java",              
+              interface % "test",
+              // `transaction-test-lib` % "test" // https://github.com/sbt/sbt/issues/2698
               )
 
-// TODO: separate project so that it can be packaged and published               
+// TODO: publish protos
 // proto_jars(
 //     name = "value_proto",
 //     srcs = ["src/main/protobuf/com/daml/lf/value.proto"],
@@ -151,8 +199,6 @@ lazy val transaction = project
 //         "@com_google_protobuf//:empty_proto",
 //     ],
 // )
-
-// TODO: separate project so that it can be packaged and published               
 // proto_jars(
 //     name = "transaction_proto",
 //     srcs = ["src/main/protobuf/com/daml/lf/transaction.proto"],
@@ -166,169 +212,25 @@ lazy val transaction = project
 // )
 
 
-
-// da_scala_test(
-//     name = "transaction-test",
-//     size = "medium",
-//     srcs = glob([
-//         "src/test/**/EitherAssertions.scala",
-//         "src/test/**/crypto/*.scala",
-//         "src/test/**/value/*.scala",
-//         "src/test/**/transaction/*.scala",
-//     ]),
-//     plugins = [
-//         silencer_plugin,
-//     ],
-//     scala_deps = [
-
-//     ],
-//     scalacopts = lf_scalacopts,
-//     deps = [
-//         ":transaction",
-//         ":transaction_proto_java",
-//         ":value_proto_java",
-//         "//daml-lf/data",
-//         "//daml-lf/interface",
-//         "//daml-lf/language",
-//         "//daml-lf/transaction-test-lib",
-//         "Deps.com_google_protobuf_protobuf_java",
-//     ],
-// )
-
-// da_scala_test(
-//     name = "validation-test",
-//     size = "medium",
-//     srcs = glob([
-//         "src/test/**/validation/*.scala",
-//     ]),
-//     plugins = [
-//         silencer_plugin,
-//     ],
-//     scalacopts = lf_scalacopts,
-//     deps = [
-//         ":transaction",
-//         "//daml-lf/data",
-//         "//daml-lf/language",
-//     ],
-// )
-
-lazy val interface = project
-  .settings(
-    name := "daml-lf-interface",
-//         silencer_plugin,
-//     scalacopts = lf_scalacopts_stricter,
-    libraryDependencies ++= Seq(
-        Deps.org_scala_lang_modules_scala_collection_compat,
-        Deps.org_scalaz_scalaz_core,
-        Deps.com_google_protobuf_protobuf_java)
-  ).dependsOn(
-           `archive-reader`,
-//         "//daml-lf/archive:daml_lf_dev_archive_proto_java",
-              data,
-              language)
-
-//     visibility = [
-//         "//daml-assistant/daml-sdk:__subpackages__",
-//         "//daml-lf:__subpackages__",
-//         "//daml-script:__subpackages__",
-//         "//extractor:__subpackages__",
-//         "//language-support:__subpackages__",
-//         "//ledger-service:__subpackages__",
-//         "//navigator:__subpackages__",
-//     ],
-
-
-// da_scala_test(
-//     name = "tests",
-//     size = "small",
-//     srcs = glob(["src/test/**/*.scala"]),
-//     scala_deps = [
-//         "Deps.org_scalaz_scalaz_core",
-//     ],
-//     scalacopts = lf_scalacopts,
-//     deps = [
-//         ":interface",
-//         "//daml-lf/archive:daml_lf_archive_reader",
-//         "//daml-lf/archive:daml_lf_dev_archive_proto_java",
-//         "//daml-lf/data",
-//         "//daml-lf/language",
-//         "//daml-lf/parser",
-//         "Deps.com_google_protobuf_protobuf_java",
-//     ],
-// )
-
-
-
-lazy val language = project
-  .settings(
-    name := "daml-lf-language",
-//     scalacopts = lf_scalacopts_stricter,
-    libraryDependencies ++= Seq (
-        Deps.org_scalaz_scalaz_core)
-  ).dependsOn(
-        data,
-        nameof)
-
-
-// da_scala_test(
-//     name = "language-test",
-//     size = "small",
-//     srcs = glob(["src/test/**/*.scala"]),
-//     plugins = [
-//         silencer_plugin,
-//     ],
-//     scalacopts = lf_scalacopts + [
-//         "-P:silencer:lineContentFilters=signum",
-//     ],
-//     deps = [
-//         ":language",
-//         "//daml-lf/data",
-//     ],
-// )
-
-
-
 lazy val `kv-transaction-support` = project
   .settings(
     name := "daml-lf-kv-transaction-support",
 //     scalacopts = lf_scalacopts_stricter,
+
+    libraryDependencies ++= List(
+      Deps.org_scalaz_scalaz_core,
+      Deps.org_scalacheck_scalacheck,
+      Deps.org_scalatest_scalatest_core,
+      Deps.org_scalatest_scalatest_matchers_core,
+      Deps.org_scalatest_scalatest_shouldmatchers,
+      Deps.org_scalatest_scalatest_wordspec,
+      Deps.org_scalatestplus_scalacheck_1_15,
+      Deps.org_scalatest_scalatest_compatible).map(_ % "test"),
+
+    Test / unmanagedClasspath ++= (LocalProject("transaction-test-lib") / Compile / fullClasspath).value,
+
   ).dependsOn(data,
               transaction)
-
-
-// da_scala_test_suite(
-//     name = "test",
-//     srcs = glob(["src/test/**/*.scala"]),
-//     scala_deps = [
-//         "Deps.org_scalaz_scalaz_core",
-//         "Deps.org_scalacheck_scalacheck",
-//         "Deps.org_scalatest_scalatest_core",
-//         "Deps.org_scalatest_scalatest_matchers_core",
-//         "Deps.org_scalatest_scalatest_shouldmatchers",
-//         "Deps.org_scalatest_scalatest_wordspec",
-//         "Deps.org_scalatestplus_scalacheck_1_15",
-//     ],
-//     scalacopts = lf_scalacopts,
-//     deps = [
-//         ":kv-transaction-support",
-//         "//daml-lf/data",
-//         "//daml-lf/transaction",
-//         "//daml-lf/transaction-test-lib",
-//         "Deps.org_scalatest_scalatest_compatible",
-//     ],
-// )
-
-
-
-lazy val `data-scalacheck` = project
-  .settings(
-    name := "daml-lf-data-scalacheck",
-//     scalacopts = lf_scalacopts_stricter,
-    addCompilerPlugin(Deps.org_typelevel_kind_projector),
-    libraryDependencies ++= Seq (
-        Deps.org_scalacheck_scalacheck,
-        Deps.org_scalaz_scalaz_core)
-  ).dependsOn(data)
 
 
 lazy val `transaction-test-lib` = project
@@ -355,13 +257,146 @@ lazy val `transaction-test-lib` = project
       transaction)
 
 
+lazy val validation = project
+  .settings(
+    // other settings
+    name := "daml-lf-validation",
+    //     scalacopts = lf_scalacopts_stricter,
+    libraryDependencies ++= List(
+        Deps.org_scala_lang_modules_scala_collection_compat,
+        Deps.org_scalaz_scalaz_core),
+
+    libraryDependencies ++= List(
+        Deps.org_scalatest_scalatest_shouldmatchers,
+        Deps.org_scalatest_scalatest_wordspec).map(_ % "test"),
+
+    // test scope:
+    //     plugins = [         silencer_plugin,
+    //     scalacopts = lf_scalacopts + [
+    //         "-P:silencer:lineContentFilters=standardInterpolator",
+  ).dependsOn(data,
+              language,
+              `scala-utils`,
+              parser % "test")
+
+lazy val `typechecking-benchmark` = project.enablePlugins(JmhPlugin)
+  .settings(
+    Compile / unmanagedSourceDirectories := Seq((validation / baseDirectory).value / "src/bench"),
+
+  ).dependsOn(
+    validation,
+    `archive-reader`,
+  )
+
+// da_scala_benchmark_jmh(
+//     data = [
+//         "//ledger/test-common:model-tests-1.14.dar",
+//     ],
+//     scala_deps = [
+//         "Deps.org_scalaz_scalaz_core",
+//     ],
+//     deps = [
+//         "//bazel_tools/runfiles:scala_runfiles",
+//         "//daml-lf/archive:daml_lf_dev_archive_proto_java",
+//         "//daml-lf/engine",
+//         "//daml-lf/interpreter",
+//         "//daml-lf/scenario-interpreter",
+//         "//daml-lf/transaction",
+//         "//ledger/test-common:dar-files-default-lib",
+//         "Deps.com_google_protobuf_protobuf_java",
+//     ],
+// )
+
+
+lazy val interpreter = project
+  .settings(
+    name := "daml-lf-interpreter",
+    //     scalacopts = lf_scalacopts_stricter,
+    libraryDependencies ++= Seq(
+		    Deps.io_spray_spray_json,
+        Deps.org_scala_lang_modules_scala_collection_compat,
+        Deps.org_scalaz_scalaz_core,
+        Deps.org_typelevel_paiges_core,
+        Deps.com_google_protobuf_protobuf_java,
+        Deps.org_slf4j_slf4j_api),
+
+    libraryDependencies ++= Seq(
+        Deps.org_scalacheck_scalacheck,
+        Deps.org_scalatest_scalatest_core,
+        Deps.org_scalatest_scalatest_matchers_core,
+        Deps.org_scalatest_scalatest_shouldmatchers,
+        Deps.org_scalatest_scalatest_wordspec,
+        Deps.org_scalatest_scalatest_freespec,
+        Deps.org_scalatestplus_scalacheck_1_15,
+        Deps.org_scalaz_scalaz_scalacheck_binding,
+        // TODO: ??? Deps.org_slf4j_slf4j_api -- Tests output "Failed to load class "org.slf4j.impl.StaticLoggerBinder"."
+        ).map(_ % "test"),
+        
+    Test / unmanagedClasspath ++= (LocalProject("transaction-test-lib") / Compile / fullClasspath).value,
+
+    // TODO: ??? split off this test
+// da_scala_test(
+//     name = "test_bignumeric",
+//     srcs = ["src/test/scala/com/digitalasset/daml/lf/speedy/SBuiltinBigNumericTest.scala"],
+//     scala_deps = [
+//         "Deps.org_scalatest_scalatest_core",
+//         "Deps.org_scalatest_scalatest_freespec",
+//         "Deps.org_scalatest_scalatest_matchers_core",
+//         "Deps.org_scalatest_scalatest_shouldmatchers",
+//         "Deps.org_scalaz_scalaz_core",
+//     ],
+//     scalacopts = lf_scalacopts,
+//     deps = [
+//         ":interpreter",
+//         "//daml-lf/data",
+//         "//daml-lf/language",
+//         "//daml-lf/parser",
+//         "Deps.org_scalatest_scalatest_compatible",
+//     ],
+// )
+
+  ).dependsOn(data,
+              language,
+              transaction,
+              validation,
+              nameof,
+              `scala-utils`,
+              interface % "test",
+              parser % "test",
+              `logging-entries` % "test")
+
+//     visibility = [
+//         "//compiler/repl-service:__subpackages__",
+//         "//compiler/scenario-service:__subpackages__",
+//         "//daml-lf:__subpackages__",
+//         "//daml-script:__subpackages__",
+//         "//extractor:__subpackages__",
+//         "//ledger:__subpackages__",
+//         "//triggers:__subpackages__",
+
+// scala_repl(
+//     name = "interpreter@repl",
+//     deps = [
+//         ":interpreter",
+//     ],
+// )
+
+
+
+
 lazy val `scenario-interpreter` = project
   .settings(
     name := "daml-lf-scenario-interpreter",
 //     main_class = "com.daml.lf.speedy.Main",
 //     scalacopts = lf_scalacopts_stricter,
     libraryDependencies ++= Seq (
-        Deps.org_typelevel_paiges_core)
+        Deps.org_typelevel_paiges_core),
+
+    libraryDependencies ++= List(
+        Deps.org_scalaz_scalaz_core,
+        Deps.org_scalatest_scalatest_shouldmatchers,
+        Deps.org_scalatest_scalatest_wordspec).map(_ % "test"),
+
   ).dependsOn(
         data,
         engine,
@@ -376,22 +411,6 @@ lazy val `scenario-interpreter` = project
 //         "//daml-lf/language",
 //         "//daml-lf/transaction",
 //         "//libs-scala/scala-utils",
-
-// da_scala_test_suite(
-//     name = "scenario-interpreter_tests",
-//     size = "small",
-//     srcs = glob(["src/test/**/*.scala"]),
-//     scala_deps = ["Deps.org_scalaz_scalaz_core"],
-//     scalacopts = lf_scalacopts,
-//     deps = [
-//         ":scenario-interpreter",
-//         "//daml-lf/data",
-//         "//daml-lf/engine",
-//         "//daml-lf/interpreter",
-//         "//daml-lf/language",
-//         "//daml-lf/transaction",
-//     ],
-// )
 
 // daml_compile(
 //     name = "CollectAuthority",
@@ -433,88 +452,6 @@ lazy val `scenario-interpreter` = project
 //     main_class = "org.openjdk.jmh.Main",
 //     deps = [":scenario-perf"],
 // )
-
-
-lazy val data = project
-  .settings(
-    // other settings
-    name := "daml-lf-data",
-    libraryDependencies ++= List(
-        Deps.org_scalaz_scalaz_core,
-        Deps.com_google_guava_guava,
-        Deps.com_google_protobuf_protobuf_java,
-        Deps.org_slf4j_slf4j_api),
-    addCompilerPlugin(Deps.org_typelevel_kind_projector),
-//         silencer_plugin,
-//     scalacopts = lf_scalacopts_stricter + [
-//         "-P:silencer:lineContentFilters=import ImmArraySeq.Implicits._",
-//     ],
-  ).dependsOn(`logging-entries`,
-              `scala-utils`)
-
-
-// da_scala_test(
-//     name = "data-test",
-//     size = "small",
-//     srcs = glob(["src/test/**/*.scala"]),
-//     plugins = [
-//         silencer_plugin,
-//     ],
-//     scala_deps = [
-//         "Deps.org_scalacheck_scalacheck",
-//         "Deps.org_scalatestplus_scalacheck_1_15",
-//         "Deps.org_scalaz_scalaz_core",
-//         "Deps.org_scalaz_scalaz_scalacheck_binding",
-//     ],
-//     scalacopts = lf_scalacopts + [
-//         "-P:silencer:lineContentFilters=import ImmArraySeq.Implicits._",
-//         "-P:silencer:lineContentFilters=signum",
-//     ],
-//     deps = [
-//         ":data",
-//         "//daml-lf/data-scalacheck",
-//         "//libs-scala/scalatest-utils",
-//     ],
-// )
-
-
-lazy val parser = project
-  .settings(
-    // other settings
-    name := "daml-lf-parser",
-//         silencer_plugin,
-//     scalacopts = lf_scalacopts_stricter + [
-//         "-P:silencer:lineContentFilters=standardInterpolator",
-    libraryDependencies ++= List(
-        Deps.org_scala_lang_modules_scala_parser_combinators,
-        Deps.org_scalaz_scalaz_core)
-
-  ).dependsOn(data,
-              language)
-
-//     visibility = [
-//         "//daml-lf:__subpackages__",
-//         "//ledger:__subpackages__",
-
-// da_scala_test(
-//     name = "parser-test",
-//     size = "small",
-//     srcs = glob(["src/test/**/*.scala"]),
-//     scala_deps = [
-//         "Deps.org_scalacheck_scalacheck",
-//         "Deps.org_scalatestplus_scalacheck_1_15",
-//     ],
-//     scalacopts = lf_scalacopts,
-//     visibility = [
-//         "//daml-lf:__subpackages__",
-//     ],
-//     deps = [
-//         ":parser",
-//         "//daml-lf/data",
-//         "//daml-lf/language",
-//     ],
-// )
-
 
 
 lazy val engine = project
@@ -652,66 +589,6 @@ lazy val engine = project
 //         "Deps.io_netty_netty_handler",
 //     ],
 // )
-
-
-lazy val validation = project
-  .settings(
-    // other settings
-    name := "daml-lf-validation",
-    //     scalacopts = lf_scalacopts_stricter,
-    libraryDependencies ++= List(
-        Deps.org_scala_lang_modules_scala_collection_compat,
-        Deps.org_scalaz_scalaz_core)
-
-  ).dependsOn(data,
-              language,
-              `scala-utils`)
-
-
-// da_scala_test(
-//     name = "validation-test",
-//     size = "small",
-//     srcs = glob(["src/test/**/*.scala"]),
-//     plugins = [
-//         silencer_plugin,
-//     ],
-//     scalacopts = lf_scalacopts + [
-//         "-P:silencer:lineContentFilters=standardInterpolator",
-//     ],
-//     deps = [
-//         ":validation",
-//         "//daml-lf/data",
-//         "//daml-lf/language",
-//         "//daml-lf/parser",
-//     ],
-// )
-
-// da_scala_benchmark_jmh(
-//     name = "typechecking-benchmark",
-//     srcs = glob(["src/bench/**/*.scala"]),
-//     data = [
-//         "//ledger/test-common:model-tests-1.14.dar",
-//     ],
-//     scala_deps = [
-//         "Deps.org_scalaz_scalaz_core",
-//     ],
-//     visibility = ["//visibility:public"],
-//     deps = [
-//         "//bazel_tools/runfiles:scala_runfiles",
-//         "//daml-lf/archive:daml_lf_archive_reader",
-//         "//daml-lf/archive:daml_lf_dev_archive_proto_java",
-//         "//daml-lf/data",
-//         "//daml-lf/engine",
-//         "//daml-lf/interpreter",
-//         "//daml-lf/language",
-//         "//daml-lf/scenario-interpreter",
-//         "//daml-lf/transaction",
-//         "//daml-lf/validation",
-//         "//ledger/test-common:dar-files-default-lib",
-//         "Deps.com_google_protobuf_protobuf_java",
-//     ],
-// )
-
 
 lazy val repl = project
   .settings(
@@ -1273,4 +1150,3 @@ lazy val encoder = project
 //     )
 //     for file in glob(["scenario/dev/*/Test.daml"])
 // ]
-

@@ -17,7 +17,8 @@
         "dev-env/lib/*": true,
         "bazel-*/*": true,
         ".bazel-cache/*": true,
-        "**/node_modules/*": true
+        "**/node_modules/*": true,
+        "**/target": true
     },
     "search.exclude": {
         "**/.stack-work": true,

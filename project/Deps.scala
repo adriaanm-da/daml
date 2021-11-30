@@ -20,14 +20,17 @@ object Deps {
 
 	lazy val org_scalatest_scalatest                         = "org.scalatest" %% "scalatest-core" % "3.2.9"
 
-//	lazy val org_scalatest_scalatest_core                    = "org.scalatest" %% "scalatest-core" % "3.2.9"
-//	lazy val org_scalatest_scalatest_compatible              = "org.scalatest" %% "scalatest-compatible" % "3.2.9"
-//	lazy val org_scalatest_scalatest_flatspec                =
-//	lazy val org_scalatest_scalatest_freespec                =
-//	lazy val org_scalatest_scalatest_matchers_core           =
-//	lazy val org_scalatest_scalatest_shouldmatchers          =
-//	lazy val org_scalatest_scalatest_wordspec                =
+ 	lazy val org_scalatest_scalatest_core                    = "org.scalatest" %% "scalatest-core" % "3.2.9"
+ 	lazy val org_scalatest_scalatest_compatible              = "org.scalatest" %  "scalatest-compatible" % "3.2.9"
+ 	lazy val org_scalatest_scalatest_flatspec                = "org.scalatest" %% "scalatest-flatspec" % "3.2.9"
+ 	lazy val org_scalatest_scalatest_freespec                = "org.scalatest" %% "scalatest-freespec" % "3.2.9"
+	lazy val org_scalatest_scalatest_propspec                = "org.scalatest" %% "scalatest-propspec" % "3.2.9"
+ 	lazy val org_scalatest_scalatest_matchers_core           = "org.scalatest" %% "scalatest-matchers-core" % "3.2.9"
+ 	lazy val org_scalatest_scalatest_shouldmatchers          = "org.scalatest" %% "scalatest-shouldmatchers" % "3.2.9"
+ 	lazy val org_scalatest_scalatest_wordspec                = "org.scalatest" %% "scalatest-wordspec" % "3.2.9"
 	lazy val org_scalatestplus_scalacheck_1_15               = "org.scalatestplus" %% "scalacheck-1-15" % "3.2.9.0"
+	lazy val org_scalactic_scalactic                         = "org.scalactic" %% "scalactic" % "3.2.9"
+
 
 	lazy val org_scalaz_scalaz_core                          = "org.scalaz" %% "scalaz-core" % "7.2.33"
 	lazy val org_scalaz_scalaz_scalacheck_binding            = "org.scalaz" %% "scalaz-scalacheck-binding" % "7.2.33-scalacheck-1.15"
@@ -176,7 +179,6 @@ object Deps {
 "org.scala-lang.modules" % "scala-java8-compat" %% "0.9.0"
 "org.scala-lang.modules" % "scala-parallel-collections" %% "1.0.0"
 "org.scalameta" % "munit" %% "0.7.26"
-"org.scalactic" % "scalactic" %% "3.2.9"
 
 "org.scalatestplus" % "selenium-3-141" %% "3.2.9.0"
 "org.scalatestplus" % "testng-6-7" %% "3.2.9.0"
