@@ -10,3 +10,5 @@ lazy val root = project.
 
 lazy val `daml-lf` = project
 lazy val `libs-scala` = project
+lazy val ledger = project
+lazy val `ledger-service` = project

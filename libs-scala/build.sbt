@@ -32,7 +32,18 @@ lazy val `adjustable-clock` = project
 lazy val `auth-utils` = project
 lazy val `build-info` = project
 lazy val `concurrent` = project
-lazy val `contextualized-logging` = project
+lazy val `contextualized-logging` = project.settings(
+  libraryDependencies ++= Seq(
+    Deps.com_typesafe_akka_akka_actor,
+    Deps.com_typesafe_akka_akka_stream,
+    Deps.io_spray_spray_json,
+    Deps.com_fasterxml_jackson_core_jackson_core,
+    Deps.io_grpc_grpc_api,
+    Deps.net_logstash_logback_logstash_logback_encoder,
+    Deps.org_slf4j_slf4j_api
+  )
+).dependsOn(`grpc-utils`, `logging-entries`)
+
 lazy val `db-utils` = project
 lazy val `doobie-slf4j` = project
 lazy val `flyway-testing` = project
@@ -41,7 +52,17 @@ lazy val `gatling-utils` = project
 lazy val `grpc-reverse-proxy` = project
 lazy val `grpc-server-reflection-client` = project
 lazy val `grpc-test-utils` = project
-lazy val `grpc-utils` = project
+
+// TODO
+lazy val `grpc-utils` = project.settings(
+
+    libraryDependencies ++= Seq(
+Deps.com_google_api_grpc_proto_google_common_protos,
+Deps.io_grpc_grpc_api)
+
+//         "//ledger-api/grpc-definitions:ledger_api_proto_scala",
+)
+
 lazy val `logging-entries` = project.settings(libraryDependencies += Deps.io_spray_spray_json)
 lazy val `nameof` = project.settings(libraryDependencies += "org.scala-lang" % "scala-compiler" % scalaVersion.value)
 lazy val `oracle-testing` = project

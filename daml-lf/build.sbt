@@ -1,8 +1,8 @@
 lazy val root = RootProject(file("../"))
-lazy val nameof = ProjectRef(file("./"), "nameof")
-lazy val `scala-utils` = ProjectRef(file("./"), "scala-utils")
-lazy val `logging-entries` = ProjectRef(file("./"), "logging-entries")
-lazy val `scalatest-utils` = ProjectRef(file("./"), "scalatest-utils")
+lazy val nameof = LocalProject("nameof")
+lazy val `scala-utils` = LocalProject("scala-utils")
+lazy val `logging-entries` = LocalProject("logging-entries")
+lazy val `scalatest-utils` = LocalProject("scalatest-utils")
 
 lazy val `daml-lf` = project.aggregate(
   interpreter, transaction, interface, language, 
@@ -40,7 +40,7 @@ lazy val data = project
 
   ).dependsOn(`logging-entries`,
               `scala-utils`,
-//              `data-scalacheck` % "test", 
+              // `data-scalacheck` % "test", (see above)
               `scalatest-utils` % "test")
 
 
@@ -52,7 +52,7 @@ lazy val `data-scalacheck` = project
     libraryDependencies ++= Seq (
         Deps.org_scalacheck_scalacheck,
         Deps.org_scalaz_scalaz_core)
-  ).dependsOn(ProjectRef(file("./"), "data") % "compile")
+  ).dependsOn(LocalProject("data") % "compile")
 
 
 lazy val language = project
@@ -156,7 +156,7 @@ lazy val transaction = project
         // "@com_github_googleapis_googleapis//google/rpc:error_details_proto",
         // "@com_github_googleapis_googleapis//google/rpc:status_proto",
         // "@com_github_grpc_grpc//src/proto/grpc/health/v1:health_proto_descriptor",
-         "com.google.api.grpc"    % "googleapis-common-protos" % "0.0.3" % "protobuf"
+        Deps.com_google_api_grpc_proto_google_common_protos
     ),
 
     // TODO: this compiles, but I'm not sure what the bazel plugin was actually doing...
@@ -184,7 +184,7 @@ lazy val transaction = project
 //         ":transaction_proto_java",
 //         ":value_proto_java",              
               interface % "test",
-              // `transaction-test-lib` % "test" // https://github.com/sbt/sbt/issues/2698
+              // `transaction-test-lib` % "test" -- see above
               )
 
 // TODO: publish protos
