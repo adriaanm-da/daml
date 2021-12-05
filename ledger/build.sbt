@@ -33,6 +33,8 @@ lazy val `archive-reader` = LocalProject("archive-reader")
 // ledger-service
 lazy val jwt = LocalProject("jwt")
 
+lazy val `grpc-definitions` = LocalProject("grpc-definitions")
+
 // local projects:
 
 lazy val `error` = project.settings(
@@ -53,7 +55,8 @@ lazy val `error` = project.settings(
         // daml-lf
         `archive-reader`, data, engine, `language`, transaction, validation,
         //`participant-state`,
-        `contextualized-logging`,`logging-entries`)
+        `contextualized-logging`,`logging-entries`,
+        `grpc-definitions`)
 
 lazy val `ledger-api-common` = project
 

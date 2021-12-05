@@ -38,7 +38,6 @@ lazy val `vendored-grpc-protos` = (project in file("vendored-grpc-protos"))
       Deps.io_grpc_grpc_api,
       Deps.io_grpc_grpc_core,
       Deps.io_grpc_grpc_stub,
-
     ),
 
     Compile / PB.targets := Seq(
