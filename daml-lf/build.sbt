@@ -17,7 +17,7 @@ lazy val data = project
     libraryDependencies ++= List(
         Deps.org_scalaz_scalaz_core,
         Deps.com_google_guava_guava,
-        Deps.com_google_protobuf_protobuf_java,
+        Deps.com_google_protobuf_protobuf_java % "protobuf",
         Deps.org_slf4j_slf4j_api),
 
     libraryDependencies ++= List(
@@ -144,7 +144,7 @@ lazy val transaction = project
     libraryDependencies ++= Seq(
         Deps.org_scala_lang_modules_scala_collection_compat,
         Deps.org_scalaz_scalaz_core,
-        Deps.com_google_protobuf_protobuf_java,
+        Deps.com_google_protobuf_protobuf_java % "protobuf",
         Deps.com_chuusai_shapeless                          % "test",
         Deps.org_scalacheck_scalacheck                      % "test",
         Deps.org_scalatestplus_scalacheck_1_15              % "test",
@@ -156,7 +156,7 @@ lazy val transaction = project
         // "@com_github_googleapis_googleapis//google/rpc:error_details_proto",
         // "@com_github_googleapis_googleapis//google/rpc:status_proto",
         // "@com_github_grpc_grpc//src/proto/grpc/health/v1:health_proto_descriptor",
-        Deps.com_google_api_grpc_proto_google_common_protos
+        // Deps.com_google_api_grpc_proto_google_common_protos % "protobuf"
     ),
 
     // TODO: this compiles, but I'm not sure what the bazel plugin was actually doing...
