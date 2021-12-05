@@ -72,7 +72,7 @@ object Deps {
 	lazy val io_grpc_grpc_stub = "io.grpc" % "grpc-stub" % grpc_version
 	lazy val io_grpc_grpc_context =	"io.grpc" % "grpc-context" % grpc_version
 	
-	lazy val com_google_api_grpc_proto_google_common_protos = "com.google.api.grpc"    % "googleapis-common-protos" % "0.0.3" % "protobuf"
+	lazy val com_google_api_grpc_proto_google_common_protos = "com.google.api.grpc"    % "googleapis-common-protos" % "0.0.3"
 
 	lazy val com_typesafe_scala_logging_scala_logging = "com.typesafe.scala-logging" %% "scala-logging" % "3.9.2"
 	
@@ -81,7 +81,7 @@ object Deps {
 	lazy val com_fasterxml_jackson_core_jackson_core = "com.fasterxml.jackson.core" % "jackson-core" % "2.12.0"
 // lazy val com_fasterxml_jackson_core_jackson_databind = "com.fasterxml.jackson.core" % "jackson-databind" % "2.12.0"
 
-	lazy val net_logstash_logback_logstash_logback_encoder = "net.logstash.logback" % "logstash-logback-encoder" % "6.6",
+	lazy val net_logstash_logback_logstash_logback_encoder = "net.logstash.logback" % "logstash-logback-encoder" % "6.6"
 
 /*
 lazy val ch_qos_logback_logback_classic =
