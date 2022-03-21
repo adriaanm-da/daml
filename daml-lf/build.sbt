@@ -1,5 +1,8 @@
 lazy val root = RootProject(file("../"))
 lazy val nameof = LocalProject("nameof")
+lazy val `contextualized-logging` = LocalProject("contextualized-logging")
+lazy val `crypto` = LocalProject("crypto")
+lazy val `safe-proto` = LocalProject("safe-proto")
 lazy val `scala-utils` = LocalProject("scala-utils")
 lazy val `logging-entries` = LocalProject("logging-entries")
 lazy val `scalatest-utils` = LocalProject("scalatest-utils")
@@ -17,7 +20,7 @@ lazy val data = project
     libraryDependencies ++= List(
         Deps.org_scalaz_scalaz_core,
         Deps.com_google_guava_guava,
-        Deps.com_google_protobuf_protobuf_java % "protobuf",
+        Deps.com_google_protobuf_protobuf_java, // % "protobuf"
         Deps.org_slf4j_slf4j_api),
 
     libraryDependencies ++= List(
@@ -38,7 +41,8 @@ lazy val data = project
 //         "-P:silencer:lineContentFilters=import ImmArraySeq.Implicits._",
 //     ],
 
-  ).dependsOn(`logging-entries`,
+  ).dependsOn(`crypto`,
+              `logging-entries`,
               `scala-utils`,
               // `data-scalacheck` % "test", (see above)
               `scalatest-utils` % "test")
@@ -180,6 +184,7 @@ lazy val transaction = project
   ).dependsOn(data,
               language,
               nameof,
+              `safe-proto`,
               `scala-utils`,
 //         ":transaction_proto_java",
 //         ":value_proto_java",              
@@ -318,6 +323,7 @@ lazy val interpreter = project
         Deps.org_scalaz_scalaz_core,
         Deps.org_typelevel_paiges_core,
         Deps.com_google_protobuf_protobuf_java,
+        Deps.org_apache_commons_commons_text,
         Deps.org_slf4j_slf4j_api),
 
     libraryDependencies ++= Seq(
@@ -360,6 +366,7 @@ lazy val interpreter = project
               transaction,
               validation,
               nameof,
+              `contextualized-logging`,
               `scala-utils`,
               interface % "test",
               parser % "test",
@@ -744,7 +751,7 @@ lazy val encoder = project
         Deps.org_scalaz_scalaz_core)
         //         "Deps.com_google_protobuf_protobuf_java",
 
-  ).dependsOn(`archive-reader`, data, language)
+  ).dependsOn(`archive-reader`, `safe-proto`, data, language)
 
 // da_scala_test_suite(
 //     name = "tests",

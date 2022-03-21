@@ -83,6 +83,8 @@ object Deps {
 
 	lazy val net_logstash_logback_logstash_logback_encoder = "net.logstash.logback" % "logstash-logback-encoder" % "6.6"
 
+	lazy val org_apache_commons_commons_text = "org.apache.commons" % "commons-text" % "1.4"
+	
 /*
 lazy val ch_qos_logback_logback_classic =
 lazy val ch_qos_logback_logback_core =

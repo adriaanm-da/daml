@@ -47,6 +47,12 @@ lazy val `contextualized-logging` = project.settings(
   )
 ).dependsOn(`grpc-utils`, `logging-entries`)
 
+lazy val `crypto` = project.settings(
+  libraryDependencies ++= Seq(
+    Deps.org_slf4j_slf4j_api
+  )
+).dependsOn(`scala-utils`)
+
 // lazy val `db-utils` = project
 // lazy val `doobie-slf4j` = project
 // lazy val `flyway-testing` = project
@@ -65,6 +71,13 @@ lazy val `nameof` = project.settings(libraryDependencies += "org.scala-lang" % "
 // lazy val `resources` = project
 // lazy val `resources-akka` = project
 // lazy val `resources-grpc` = project
+
+lazy val `safe-proto` = project.settings(
+  libraryDependencies ++= Seq(
+    Deps.com_google_protobuf_protobuf_java
+  )
+)
+
 lazy val `scala-utils` = project.settings(
     libraryDependencies ++= Seq(Deps.org_scalaz_scalaz_core, Deps.org_scala_lang_modules_scala_collection_compat),
     Compile / unmanagedSourceDirectories += (baseDirectory( _ / "src/main/2.13" )).value,
